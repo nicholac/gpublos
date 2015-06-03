@@ -70,3 +70,40 @@ int intersectUtils::intersect(const std::vector<std::shared_ptr<position>>& inTr
     //No intersect at end of loop if not broken
     return 1;
 }
+
+bool intersectUtils::checkIntersect(const double& x1, const double& x2, const double& x3, const double& x4,
+                                    const double& y1, const double& y2, const double& y3, const double& y4,
+                                    const double& iSectX, const double& iSectY) {
+    
+    if (iSectX >= x1) {
+        if (iSectX <= x2) {
+            if (iSectY >= std::min(y3, y4)) {
+                if (iSectY <= std::max(y3, y4)) {
+                    //Intersect
+                    return true;
+                }
+            }
+            
+        }
+    }
+    //Otherwise not
+    return false;
+}
+
+
+void intersectUtils::chkParallel(const double& x1, const double& x2, const double& x3, const double& x4,
+                                 const double& y1, const double& y2, const double& y3, const double& y4,
+                                 double& delta) {
+    //Check parallel / get delta
+    delta = ((x1-x2)*(y3-y4))-((y1-y2)*(x3-x4));
+};
+
+
+void intersectUtils::calcSects(const double& x1, const double& x2, const double& x3, const double& x4,
+                               const double& y1, const double& y2, const double& y3, const double& y4,
+                               const double& delta, double& iSectX, double& iSectY) {
+    
+    iSectX = ((((x1*y2)-(y1*x2))*(x3-x4))-((x1-x2)*((x3*y4)-(y3*x4))))/delta;
+    iSectY = ((((x1*y2)-(y1*x2))*(y3-y4))-((y1-y2)*((x3*y4)-(y3*x4))))/delta;
+    
+}

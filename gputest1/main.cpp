@@ -6,9 +6,12 @@
 //  Copyright (c) 2015 Chris Nicholas. All rights reserved.
 //
 
+#define __CL_ENABLE_EXCEPTIONS
 #include <iostream>
 #include <OpenCL/opencl.h>
 #include <cl.hpp>
+#include <position.h>
+#include <intersect.h>
 
 
 int main(int argc, const char * argv[]) {
@@ -36,8 +39,8 @@ int main(int argc, const char * argv[]) {
         exit(1);
     }
     std::cout << " All Devices follow " << std::endl;
-    for (auto plat : all_platforms) {
-        std::cout << plat.getInfo<CL_PLATFORM_NAME>() << std::endl;
+    for (auto dev : all_devices) {
+        std::cout << dev.getInfo<CL_DEVICE_NAME>() << std::endl;
     }
     cl::Device default_device=all_devices[0];
     std::cout<< "Using device: "<<default_device.getInfo<CL_DEVICE_NAME>()<<"\n";
