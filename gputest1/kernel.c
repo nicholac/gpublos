@@ -13,7 +13,8 @@
     //const int i = get_global_id (0);
     
     //y [i] += a * x [i];
-    
+
+
 __kernel int intersect (__global float* dem1, __global float* trj1,
                         __global float* dem2, __global float* trj2,
                         int trjSize)
@@ -26,8 +27,8 @@ __kernel int intersect (__global float* dem1, __global float* trj1,
     
     
     //Global ID to input data
-    int gID
-    gID = get_global_id(0)
+    int gID;
+    gID = get_global_id(0);
     
     y1 = dem1[gID]
     y2 = dem2[gID]

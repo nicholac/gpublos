@@ -1,0 +1,219 @@
+//
+//  main.cpp
+//  gputest1
+//
+//  Created by Chris Nicholas on 26/05/2015.
+//  Copyright (c) 2015 Chris Nicholas. All rights reserved.
+//
+
+//#define PROGRAM_FILE "simplekern.cl"
+#define __CL_ENABLE_EXCEPTIONS
+
+#include <iostream>
+#include <fstream>
+#include <iterator>
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#include <cl.hpp>
+#else
+#include <CL/cl.h>
+#include <CL/cl.hpp>
+#endif
+//#include <OpenCL/opencl.h>
+
+#include <time.h>
+#include <math.h>
+//#include <position.h>
+//#include <intersect.h>
+
+
+int main(int argc, const char * argv[]) {
+
+/*
+//Normal way first
+int taskSize1 = 100000;
+float inArr1 [taskSize1];
+for (int i=0; i<taskSize1; i++){
+inArr1[i] = 15.5+i;
+}
+clock_t t;
+t = clock();
+for (int i=0; i < 100000; i++){
+int hh = i*1000.0;
+}
+t = clock() - t;
+std::cout << float(t)/CLOCKS_PER_SEC << std::endl;
+*/
+
+// insert code here...
+cl_int err;
+
+std::cout << "Hello, World!\n";
+//get all platforms (drivers)
+std::vector<cl::Platform> platforms;
+std::vector<cl::Device> devices;
+std::vector<cl::Kernel> kernels;
+cl::Platform::get(&platforms);
+if(platforms.size()==0){
+std::cout<<" No platforms found. Check OpenCL installation!\n";
+exit(1);
+}
+std::cout << " All Platforms follow " << std::endl;
+for (auto plat : platforms) {
+std::cout << plat.getInfo<CL_PLATFORM_NAME>() << std::endl;
+}
+cl::Platform default_platform=platforms[0];
+std::cout << "Querying platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
+
+//get default device of the default platform
+default_platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
+if(devices.size()==0){
+std::cout<<" No devices found. Check OpenCL installation!\n";
+exit(1);
+}
+std::cout << " All Devices follow " << std::endl;
+for (auto dev : devices) {
+std::cout << dev.getInfo<CL_DEVICE_NAME>() << std::endl;
+}
+//cl::Device default_device=all_devices[0];
+//std::cout<< "Using device: "<<default_device.getInfo<CL_DEVICE_NAME>()<<"\n";
+
+//Create Context
+//cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)(default_platform)(), 0};
+
+
+
+// create platform
+cl::Platform::get(&platforms);
+platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &devices);
+
+//Change this if want to use GPU
+cl::Context context = cl::Context(devices);
+
+//Create Command queue
+cl::CommandQueue queue(context, devices[0]);
+
+/* Loading from String
+const char * kernelSrc =
+"__kernel void intersect(__global float* input, __global float* group_result)"
+"{"
+"int i = get_global_id (0);"
+"for (int i=0; i < 100000; i++){"
+"int p = i*1000.0;"
+"}"
+"group_result [i] = input[i]+10.0;"
+"}";
+cl::Program::Sources source;
+source.push_back(std::make_pair(kernelSrc, strlen(kernelSrc)));
+*/
+
+// load opencl source
+std::ifstream cl_file("/Users/dusted-ipro/Documents/code/code/xcode/gputest1/gputest1/simplekern.cl");
+std::string cl_string(std::istreambuf_iterator<char>(cl_file), (std::istreambuf_iterator<char>()));
+cl::Program::Sources source(1, std::make_pair(cl_string.c_str(), cl_string.length()+1));
+
+// create program
+cl::Program program(context, source);
+
+try {
+
+// compile opencl source
+program.build(devices);
+std::cout << "built kernel" << std::endl;
+
+}
+catch (cl::Error &err) {
+//Get the build log for the first device
+std::cerr << "Building failed, " << err.what() << "(" << err.err() << ")"
+<< "\nRetrieving build log\n"
+<< program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0])
+<< "\n";
+return -1;
+
+}
+
+std::cout << "Loading Kern func" << std::endl;
+// load named kernel from opencl source
+cl::Kernel kernel(program, "intersect");
+
+//Make up some data to use as input
+//float inArr [6] = { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f };
+
+std::cout << "Building indata" << std::endl;
+
+int taskSize = 100000;
+float worldArr [taskSize];
+float trjArr [taskSize];
+//Task size -1 as the kernel does a +1 call for the lines
+for (int i=0; i<(taskSize-1); i++){
+worldArr[i] = 15.5+i;
+trjArr[i] = 5.5+i;
+}
+
+//float * outArr = new float[6];
+//std::vector<float> outArr (6);
+//std::cout << outArr.size() << std::endl;
+int outArr[taskSize];
+//std::vector<float> inArr = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 };
+//std::vector<float> outArr;
+//cl::Buffer inBuff, outBuff;
+
+std::cout << "Creating Buffers" << std::endl;
+
+cl::Buffer inBuffWorld(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*taskSize, worldArr, &err);
+cl::Buffer inBuffTrj(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*taskSize, trjArr, &err);
+//False indicates read/write
+cl::Buffer outBuff(context, CL_MEM_WRITE_ONLY, sizeof(cl_int)*taskSize, NULL, NULL);
+
+std::cout << "Setting Args" << std::endl;
+
+//Set Kernel Args
+err = kernel.setArg(0, inBuffWorld);
+err = kernel.setArg(1, inBuffTrj);
+err = kernel.setArg(2, outBuff);
+
+if(err < 0) {
+perror("Couldn't create a kernel argument");
+exit(1);
+}
+
+std::cout << "Execute Kern" << std::endl;
+
+clock_t tt = clock();
+// execute kernel
+//just does 1 dim - queue.enqueueTask(kernel);
+queue.enqueueNDRangeKernel(kernel, 0, taskSize);
+
+// wait for completion
+queue.finish();
+tt = clock() - tt;
+std::cout << float(tt)/CLOCKS_PER_SEC << std::endl;
+
+std::cout << "Grab outputs" << std::endl;
+
+//Write some outputs
+try {
+queue.enqueueReadBuffer(outBuff, true, 0, sizeof(cl_int)*taskSize, outArr);
+}
+catch (cl::Error &err) {
+//Get the build log for the first device
+std::cerr << "Building failed, " << err.what() << "(" << err.err() << ")"
+<< "\nRetrieving build log\n"
+<< program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0])
+<< "\n";
+return -1;
+
+}
+
+
+std::cout << "Results follow: " << std::endl;
+//for (int i=0; i<taskSize; i++){
+//    std::cout << " // " << std::endl;
+//    std::cout << outArr[i] << std::endl;
+//}
+
+std::cout << "Done" << std::endl;
+
+
+return 0;
+}

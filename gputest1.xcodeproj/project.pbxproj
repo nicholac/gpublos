@@ -7,7 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		94AEA3B31B14EE6800D07C96 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94AEA3B21B14EE6800D07C96 /* main.cpp */; };
+		9418CC841B2F7A6800168646 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9418CC831B2F7A6800168646 /* main.cpp */; };
+		941F54D11B29A027004A9C8E /* utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941F54CF1B29A027004A9C8E /* utils.cpp */; };
+		94AEA3BD1B14F68900D07C96 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94AEA3BC1B14F68900D07C96 /* OpenCL.framework */; };
+		94DBDA391B2AFCE400F1EE69 /* main.cpp.singlekern in Sources */ = {isa = PBXBuildFile; fileRef = 94DBDA381B2AFCE400F1EE69 /* main.cpp.singlekern */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -23,8 +26,39 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9418CC831B2F7A6800168646 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		941F54CA1B28C284004A9C8E /* simplekern.cl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = simplekern.cl.h; sourceTree = "<group>"; };
+		941F54CB1B28C2D3004A9C8E /* main.cpp.applehelp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.applehelp; sourceTree = "<group>"; };
+		941F54CD1B29905B004A9C8E /* build_settings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build_settings; sourceTree = "<group>"; };
+		941F54CE1B2992CC004A9C8E /* working_basicint */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = working_basicint; sourceTree = "<group>"; };
+		941F54CF1B29A027004A9C8E /* utils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = utils.cpp; sourceTree = "<group>"; };
+		941F54D01B29A027004A9C8E /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
+		94676F271B29C03400EA5CC6 /* recShot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = recShot.cpp; sourceTree = "<group>"; };
+		94676F281B29C03400EA5CC6 /* recShot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = recShot.h; sourceTree = "<group>"; };
+		94676F2A1B29C06600EA5CC6 /* velocity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = velocity.h; sourceTree = "<group>"; };
+		94676F371B29C20600EA5CC6 /* azUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = azUtils.cpp; sourceTree = "<group>"; };
+		94676F381B29C20600EA5CC6 /* azUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = azUtils.h; sourceTree = "<group>"; };
+		94676F391B29C20600EA5CC6 /* velocityUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = velocityUtils.cpp; sourceTree = "<group>"; };
+		94676F3A1B29C20600EA5CC6 /* velocityUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = velocityUtils.h; sourceTree = "<group>"; };
+		94676F3B1B29C20600EA5CC6 /* worldParams.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = worldParams.cpp; sourceTree = "<group>"; };
+		94676F3C1B29C20600EA5CC6 /* worldParams.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = worldParams.h; sourceTree = "<group>"; };
+		94676F401B29C26400EA5CC6 /* acceleration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = acceleration.h; sourceTree = "<group>"; };
+		94676F411B29C2FC00EA5CC6 /* motionUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = motionUtils.cpp; sourceTree = "<group>"; };
+		94676F421B29C2FC00EA5CC6 /* motionUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = motionUtils.h; sourceTree = "<group>"; };
+		94676F441B29CC4500EA5CC6 /* distUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = distUtils.cpp; sourceTree = "<group>"; };
+		94676F451B29CC4500EA5CC6 /* distUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = distUtils.h; sourceTree = "<group>"; };
+		94676F471B29D74F00EA5CC6 /* main.cpp.fucked */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.fucked; sourceTree = "<group>"; };
 		94AEA3AF1B14EE6800D07C96 /* gputest1 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gputest1; sourceTree = BUILT_PRODUCTS_DIR; };
-		94AEA3B21B14EE6800D07C96 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		94AEA3B21B14EE6800D07C96 /* main.cpp.full */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.cpp.full; sourceTree = "<group>"; };
+		94AEA3B91B14EF0D00D07C96 /* kernel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kernel.c; sourceTree = "<group>"; };
+		94AEA3BA1B14EF0D00D07C96 /* kernel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kernel.h; sourceTree = "<group>"; };
+		94AEA3BC1B14F68900D07C96 /* OpenCL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenCL.framework; path = System/Library/Frameworks/OpenCL.framework; sourceTree = SDKROOT; };
+		94AEA3BE1B1C35D300D07C96 /* intersect.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = intersect.cpp; sourceTree = "<group>"; };
+		94AEA3BF1B1C35D300D07C96 /* intersect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = intersect.h; sourceTree = "<group>"; };
+		94AEA3C11B1C362700D07C96 /* position.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = position.h; sourceTree = "<group>"; };
+		94AEA3C21B21D45000D07C96 /* simplekern.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = simplekern.cl; sourceTree = "<group>"; };
+		94DBDA381B2AFCE400F1EE69 /* main.cpp.singlekern */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.singlekern; sourceTree = "<group>"; };
+		94E445B21B2E1C9A0040918A /* optUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = optUtils.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +66,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				94AEA3BD1B14F68900D07C96 /* OpenCL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,6 +76,7 @@
 		94AEA3A61B14EE6800D07C96 = {
 			isa = PBXGroup;
 			children = (
+				94AEA3BC1B14F68900D07C96 /* OpenCL.framework */,
 				94AEA3B11B14EE6800D07C96 /* gputest1 */,
 				94AEA3B01B14EE6800D07C96 /* Products */,
 			);
@@ -57,7 +93,37 @@
 		94AEA3B11B14EE6800D07C96 /* gputest1 */ = {
 			isa = PBXGroup;
 			children = (
-				94AEA3B21B14EE6800D07C96 /* main.cpp */,
+				94E445B21B2E1C9A0040918A /* optUtils.cpp */,
+				94676F441B29CC4500EA5CC6 /* distUtils.cpp */,
+				94676F451B29CC4500EA5CC6 /* distUtils.h */,
+				94676F411B29C2FC00EA5CC6 /* motionUtils.cpp */,
+				94676F421B29C2FC00EA5CC6 /* motionUtils.h */,
+				94676F401B29C26400EA5CC6 /* acceleration.h */,
+				94676F371B29C20600EA5CC6 /* azUtils.cpp */,
+				94676F381B29C20600EA5CC6 /* azUtils.h */,
+				94676F391B29C20600EA5CC6 /* velocityUtils.cpp */,
+				94676F3A1B29C20600EA5CC6 /* velocityUtils.h */,
+				94676F3B1B29C20600EA5CC6 /* worldParams.cpp */,
+				94676F3C1B29C20600EA5CC6 /* worldParams.h */,
+				94AEA3B21B14EE6800D07C96 /* main.cpp.full */,
+				94AEA3B91B14EF0D00D07C96 /* kernel.c */,
+				94AEA3BA1B14EF0D00D07C96 /* kernel.h */,
+				94AEA3BE1B1C35D300D07C96 /* intersect.cpp */,
+				94AEA3BF1B1C35D300D07C96 /* intersect.h */,
+				94AEA3C11B1C362700D07C96 /* position.h */,
+				94AEA3C21B21D45000D07C96 /* simplekern.cl */,
+				941F54CA1B28C284004A9C8E /* simplekern.cl.h */,
+				941F54CB1B28C2D3004A9C8E /* main.cpp.applehelp */,
+				941F54CD1B29905B004A9C8E /* build_settings */,
+				941F54CE1B2992CC004A9C8E /* working_basicint */,
+				941F54CF1B29A027004A9C8E /* utils.cpp */,
+				941F54D01B29A027004A9C8E /* utils.h */,
+				94676F271B29C03400EA5CC6 /* recShot.cpp */,
+				94676F281B29C03400EA5CC6 /* recShot.h */,
+				94676F2A1B29C06600EA5CC6 /* velocity.h */,
+				94676F471B29D74F00EA5CC6 /* main.cpp.fucked */,
+				94DBDA381B2AFCE400F1EE69 /* main.cpp.singlekern */,
+				9418CC831B2F7A6800168646 /* main.cpp */,
 			);
 			path = gputest1;
 			sourceTree = "<group>";
@@ -118,7 +184,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				94AEA3B31B14EE6800D07C96 /* main.cpp in Sources */,
+				941F54D11B29A027004A9C8E /* utils.cpp in Sources */,
+				94DBDA391B2AFCE400F1EE69 /* main.cpp.singlekern in Sources */,
+				9418CC841B2F7A6800168646 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,14 +273,32 @@
 		94AEA3B71B14EE6800D07C96 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					/usr/local/include/,
+				);
+				"LIBRARY_SEARCH_PATHS[arch=*]" = /usr/local/lib/;
+				"OTHER_LDFLAGS[arch=*]" = "-lgdal";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				"USER_HEADER_SEARCH_PATHS[arch=*]" = /System/Library/Frameworks/OpenCL.framework/Versions/A/Headers;
 			};
 			name = Debug;
 		};
 		94AEA3B81B14EE6800D07C96 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					/usr/local/include/,
+				);
+				"LIBRARY_SEARCH_PATHS[arch=*]" = /usr/local/lib/;
+				"OTHER_LDFLAGS[arch=*]" = "-lgdal";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				"USER_HEADER_SEARCH_PATHS[arch=*]" = /System/Library/Frameworks/OpenCL.framework/Versions/A/Headers;
 			};
 			name = Release;
 		};
@@ -235,6 +321,7 @@
 				94AEA3B81B14EE6800D07C96 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
