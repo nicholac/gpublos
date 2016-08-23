@@ -61,6 +61,8 @@ public:
     
     static GDALDataset* openDem(const char* demFName);
     
+    static int singlefOut(const std::vector<cl_float4>& traj, const char* fName);
+    
 };
 
 #endif /* defined(__gputest1__utils__) */

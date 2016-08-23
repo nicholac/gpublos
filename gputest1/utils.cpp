@@ -12,6 +12,7 @@
 #include <memory>
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include "gdal_priv.h"
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
@@ -325,6 +326,39 @@ GDALDataset* Utils::openDem(const char* demFName) {
     else {
         return poDataset;
     }
+}
+
+
+
+int Utils::singlefOut(const std::vector<cl_float4>& traj, const char* fName) {
+    //Safer file output for testing
+    
+    std::ofstream output(fName);
+    
+    if (!output) { // check the file opened OK
+        std::cerr << "error: open file for output failed!" << std::endl;
+        return 1;
+    }
+    //cl_float4 first = traj.front()->z;
+    
+    //Sizes should all be same
+    for (unsigned int i=0; i<traj.size(); i++){
+        // the ofstream object replaces std::cout here, then its the same use
+        output << traj.at(i).z << std::endl;
+    }
+    
+    /*
+     * Single Traj Output - x,y,z
+     * Working
+     for (auto pos : inTrj) {
+     // the ofstream object replaces std::cout here, then its the same use
+     output << pos->x << "," << pos->y << "," << pos->z << std::endl;
+     }
+     */
+    output.close(); // must close file
+    
+    return 0;
+    
 }
 
 

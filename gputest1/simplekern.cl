@@ -6,8 +6,8 @@
 //  Copyright (c) 2015 Chris Nicholas. All rights reserved.
 //
 
-__kernel void rangeChk(__global float4* worldArr, float tgtX, float tgtY,
-                       float minDist, float maxDist, __global float* distArr)
+__kernel void rangeChk(__global float8* worldArr, float tgtX, float tgtY,
+                       float minDist, float maxDist)
     {
         //Reduces by Range
         //Input - demArr, min, max ranges
@@ -17,12 +17,13 @@ __kernel void rangeChk(__global float4* worldArr, float tgtX, float tgtY,
 
         //Work out the geo coords for this location
         __private float distance, diffX, diffY;
-        __private float4 launchPos;
+        __private float8 launchPos;
         launchPos = worldArr[gid];
         //Check Ranges
         diffX = fabs(tgtX-launchPos.x);
         diffY = fabs(tgtY-launchPos.y);
-        distArr[gid] = sqrt(powr(diffX, 2)+powr(diffY, 2));
+        launchPos.s6 = sqrt(powr(diffX, 2)+powr(diffY, 2));
+        worldArr[gid] = launchPos;
     }
 
 //__kernel void test2d(__global float2* demArr)
@@ -130,195 +131,200 @@ __kernel void rangeChk(__global float4* worldArr, float tgtX, float tgtY,
 //        }
 //    }
 
-//__kernel void shot(__global float* dem, float tgtX, float tgtY, float rasterXSize,
-//                        float rasterYSize, float gtrans0,
-//                        float gtrans1, float gtrans2, float gtrans3, float gtrans4,
-//                        float gtrans5, float mortMass,
-//                        float muzVel, float mortSigma, float gForce, float tgtZ,
-//                        __global float2* coordArr)
-//
-//{//Runs single shot - returns last position
-//    int gid = get_global_id (0);
-//    __private float tmp;
-//    __private float tmp2;
-//    __private float tmp3;
-//    __private float pxX;
-//    __private float pxY;
-//    __private float dist;
-//    dist = 0.0;
-//    __private float diffX;
-//    __private float diffY;
-//    __private float az;
-//    __private float radian;
-//    __private float launchX;
-//    __private float launchY;
-//    __private float launchZ;
-//    __private float velX;
-//    __private float velY;
-//    __private float velZ;
-//    __private float combV;
-//    __private float accX;
-//    __private float accY;
-//    __private float accZ;
-//    __private float avgAccX;
-//    __private float avgAccY;
-//    __private float avgAccZ;
-//    __private float forceX;
-//    __private float forceY;
-//    __private float forceZ;
-//    __private float dragForce;
-//    __private float currPosX;
-//    __private float currPosY;
-//    __private float currPosZ;
-//    __private float prevPosX;
-//    __private float prevPosY;
-//    __private float prevPosZ;
-//    __private float floorZ;
-//    __private float elDeg;
-//    __private float elRad;
-//    //__local float trjArrX[3072];
-//    //__local float trjArrY[3072];
-//    //__local float trjArrZ[3072];
-//    //OPTIMISE
-//    //LaunchAngle
-//    elDeg = 55.0f;
-//    __private float pi;
-//    __private float timeStep;
-//    __private float t;
-//    __private bool floorMove;
-//    __private bool zenFail;
-//    __private int lpCnt;
-//    __private int resVal;
-//    //Landing Point
-//    __local float2 missPos;
-//    missPos=(0.0f, 0.0f);
-//    lpCnt=0;
-//    floorMove = false;
-//    t = 0.0f;
-//    zenFail = false;
-//    //i is still the position in the DEM (1d) as thats the input task size for kern
-//
-//    //Check range check results from procIdx
-//    if (procIdx[gid] == 1){
-//        //Run Optimise
-//        //Adding obs height to launch Z and tgtZ
-//        launchZ = dem[gid]+20.0f;
-//        //printf("%f\n", launchZ);
-//        tgtZ+=20.0f;
-//        timeStep = 0.01f;
-//        pi = 3.1415926f;
-//        //Work out pixel location and launch from 1d index
-//        tmp = modf(float(gid)/rasterXSize, &pxY);
-//        tmp2 = modf(tmp * rasterXSize, &pxX);
-//        launchX = gtrans0+(pxX*gtrans1)+pxY*gtrans2;
-//        launchY = gtrans3+(pxX*gtrans4)+pxY*gtrans5;
-//        //RECSHOT
-//        //Calc Az
-//        diffX = fabs(tgtX-launchX);
-//        diffY = fabs(tgtY-launchY);
-//        az = atan2(diffY, diffX);
-//        if (az < 0.0f) {
-//            az+=(2.0f*pi);
-//        }
-//        //Deg2rad
-//        elRad = (90.0f-elDeg) * (pi/180.0f);
-//        //Vel components
-//        velX = muzVel * sin(elRad) * cos(az);
-//        velY = muzVel * sin(elRad) * sin(az);
-//        velZ = muzVel * cos(elRad);
-//        //Acc Components
-//        accX = 0.0f;
-//        accY = 0.0f;
-//        accZ = 0.0f;
-//        //Push first elevation
-//        //trjArrX[0]=launchX;
-//        //trjArrY[0]=launchY;
-//        //trjArrZ[0]=dem[gid];
-//        //Setup Floor
-//        floorZ = -99999.0f;
-//        //Reset Force
-//        //Reset time
-//        forceZ=0.0f;
-//        dragForce=0.0f;
-//        //Setup currpos
-//        currPosX = launchX;
-//        currPosY = launchY;
-//        currPosZ = launchZ;
-//        currPosZ = 0.0f;
-//        //printf("%i, %i, %i, %i\n", 1, optLps, resVal, lpCnt);
-//        //Next - do rest of recshot (once)
-//        while (currPosZ > floorZ) { //While not below floor
-//            //Record Previous Position
-//            prevPosX = currPosX;
-//            prevPosY = currPosY;
-//            prevPosZ = currPosZ;
-//            //Total Time
-//            t = t+timeStep;
-//            //Move Position
-//            currPosX = prevPosX + ((velX * timeStep) + (0.5f*accX*(powr(timeStep, 2))));
-//            currPosY = prevPosY + ((velY * timeStep) + (0.5f*accY*(powr(timeStep, 2))));
-//            currPosZ = prevPosZ + ((velZ * timeStep) + (0.5f*accZ*(powr(timeStep, 2))));
-//            //Check if its passed zenith
-//            if (floorMove == false) {
-//                if (prevPosZ > currPosZ) {
-//                    //Passed Zenith - Check if we reached tgt height
-//                    //if (prevPosZ < tgtZ){
-//                        //Didnt reach the tgt height
-//                        //zenFail = true;
-//                        //printf("%f, %f, %f, %f, %f, %f, %i, %f, %f\n", launchZ, floorZ, tgtZ, prevPosZ, currPosZ, combV, lpCnt, prevPosZ, t);
-//                        //break;
-//                    //}
-//                    floorZ = tgtZ;
-//                    floorMove = true;
-//                    //printf("%f, %f, %f, %f, %f, %i, %f, %f\n", launchZ, floorZ, tgtZ, currPosZ, combV, lpCnt, prevPosZ, t);
-//                }
-//                //Check if the zenith failed to reach tgt height
-//                //if (zenFail == true){
-//                //    //Return null result
-//                //    resVal = 1;
-//                //}
-//            }
-//            //TODO: Check if its outside the bounds of DEM
-//            lpCnt+=1;
-//            //Drag Forces
-//            //Combined xyz velocity
-//            combV = sqrt(powr(velX, 2)+powr(velY, 2)+powr(velZ, 2));
-//            //Drag Force xyz
-//            dragForce = mortSigma*powr(combV, 2);
-//            if (combV > 0.0f){
-//                dragForce*=-1.0f;
-//            }
-//            //This actually gives the combined drag - not a velocity but reusing the class
-//            forceX = dragForce * sin(elRad) * cos(az);
-//            forceY = dragForce * sin(elRad) * sin(az);
-//            forceZ = dragForce * cos(elRad);
-//            //printf("%f, %f, %f, %f\n", velX, velY, velZ, combV);
-//            //Gravity Force
-//            forceZ-=gForce;
-//            //Verlet Integration
-//            avgAccX = 0.5f*((forceX/mortMass)+accX);
-//            avgAccY = 0.5f*((forceY/mortMass)+accY);
-//            avgAccZ = 0.5f*((forceZ/mortMass)+accZ);
-//            //Alter Velocity
-//            velX+=avgAccX*timeStep;
-//            velY+=avgAccY*timeStep;
-//            velZ+=avgAccZ*timeStep;
-//            //Reset Verlet Accelerations
-//            accX = avgAccX;
-//            accY = avgAccY;
-//            accZ = avgAccZ;
-//
-//        } //End while not below floor loop
-//        //Record Miss point in 2float
-//        missPos.xy = (float2)(currPosX, currPosY);
-//        //Check Distance from last point to tgt - 2d
-////        diffX = fabs(tgtX-currPosX);
-////        diffY = fabs(tgtY-currPosY);
-////        dist = distance(diffX, diffY);
-//        //printf("%f\n", dist);
-//    }//If proxIdx end
-//    coordArr[gid] = missPos;
-//}
+
+__kernel void shotStep(__global float8* trjArr, float4 totTime, float4 timestep, float4 tgtPos, float mortMass,
+                   float muzVel, float mortSigma, float gForce,
+                   __global float2* missPosArr)
+
+{ //Single step of the recshot func
+    int gid = get_global_id (0);
+    //Get curr position from world Arr
+    __private float8 currPos;
+    __private float8 prevPos;
+    //OutPos is the new position
+    __private float8 outPos;
+    currPos = worldArr[gid];
+    
+    //Record Previous Position
+    prevPos = currPos;
+    //Total Time
+    totTime+=timeStep;
+    //Move Position
+    currPos.x = prevPos.x + ((vel.x * timeStep) + (0.5f*acc.x*(powr(timeStep, 2))));
+    currPos.y = prevPos.y + ((vel.y * timeStep) + (0.5f*acc.y*(powr(timeStep, 2))));
+    currPos.z = prevPos.z + ((vel.z * timeStep) + (0.5f*acc.z*(powr(timeStep, 2))));
+    //Check if its passed zenith
+    if (floorMove == false) {
+        if (prevPos.z > currPos.z) {
+            floorZ = ptgtPos.z;
+            floorMove = true;
+            //Record zenith
+            launchPos.s7 = currPos.z;
+            //printf("%f, %f, %f, %f, %f, %i, %f, %f\n", launchZ, floorZ, tgtZ, currPosZ, combV, lpCnt, prevPosZ, t);
+        }
+    }
+    lpCnt+=1;
+    //Drag Forces
+    //Combined xyz velocity
+    combV = sqrt(powr(vel.x, 2)+powr(vel.y, 2)+powr(vel.z, 2));
+    //Drag Force xyz
+    dragForce = mortSigma*powr(combV, 2);
+    if (combV > 0.0f){
+        dragForce*=-1.0f;
+    }
+    //This actually gives the combined drag - not a velocity but reusing the class
+    force.x = dragForce * sin(elRad) * cos(az);
+    force.y = dragForce * sin(elRad) * sin(az);
+    force.z = dragForce * cos(elRad);
+    //Gravity Force
+    force.z-=gForce;
+    //Verlet Integration - TODO REMOVE THIS
+    avgAcc.x = 0.5*((force.x/mortMass)+acc.x);
+    avgAcc.y = 0.5*((force.y/mortMass)+acc.y);
+    avgAcc.z = 0.5*((force.z/mortMass)+acc.z);
+    //Alter Velocity - TODO USE FMA HERE
+    vel.x+=avgAcc.x*timeStep;
+    vel.y+=avgAcc.y*timeStep;
+    vel.z+=avgAcc.z*timeStep;
+    //Reset Vertlet
+    acc.x = avgAcc.x;
+    acc.y = avgAcc.y;
+    acc.z = avgAcc.z;
+
+    
+}
+
+__kernel void shot(__global float8* worldArr, float4 tgtPos, float mortMass,
+                        float muzVel, float mortSigma, float gForce,
+                        __global float2* missPosArr)
+
+{//Runs single shot - returns last position
+    int gid = get_global_id (0);
+    __private float diffX, diffY;
+    __private float az;
+    __private float radian;
+    __private float4 vel;
+    __private float combV;
+    __private float4 acc;
+    __private float4 avgAcc;
+    __private float4 force;
+    __private float dragForce;
+    __private float4 currPos;
+    __private float4 prevPos;
+    __private float floorZ;
+    __private float elRad;
+    //__local float trjArrX[3072];
+    //__local float trjArrY[3072];
+    //__local float trjArrZ[3072];
+    __private float pi;
+    __private float timeStep;
+    __private float t;
+    __private bool floorMove;
+    __private bool zenFail;
+    __private int lpCnt;
+    __private int resVal;
+    //Landing Point
+    __private float2 missPos;
+    missPos = (float2)(0.0f, 0.0f);
+    lpCnt=0;
+    floorMove = false;
+    t = 0.0f;
+    zenFail = false;
+    //Get float8 from input
+    //float8(x, y ,z ,optEl, dotp, prevdot, dist, SPARE)
+    //pos.x, pos.y, pos.z
+    //pos.s3 - optel
+    //pos.s4 - dotp
+    //pos.s5 - prevDot
+    //pos.s6 - dist land 2 tgt
+    __private float8 launchPos;
+    launchPos = worldArr[gid];
+    __private float4 ptgtPos;
+    ptgtPos = tgtPos;
+
+    //Adding obs height to launch Z and tgtZ
+    launchPos.z+=20.0f;
+    ptgtPos.z+=20.0f;
+    timeStep = 0.01f;
+    pi = 3.1415926f;
+    //Calc Az
+    diffX = fabs(ptgtPos.x-launchPos.x);
+    diffY = fabs(ptgtPos.y-launchPos.y);
+    az = atan2(diffY, diffX);
+    if (az < 0.0f) {
+        az+=(2.0f*pi);
+    }
+    //Deg2rad
+    elRad = (90.0f-launchPos.s3) * (pi/180.0f);
+    //Vel components
+    vel.x = muzVel * sin(elRad) * cos(az);
+    vel.y = muzVel * sin(elRad) * sin(az);
+    vel.z = muzVel * cos(elRad);
+    //Acc Components
+    acc.x = 0.0f;
+    acc.y = 0.0f;
+    acc.z = 0.0f;
+    //Setup Floor
+    floorZ = -99999.0f;
+    //Reset Forces
+    force = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+    dragForce=0.0f;
+    //Setup currpos
+    currPos.x = launchPos.x;
+    currPos.y = launchPos.y;
+    currPos.z = launchPos.z;
+    //Run Shot
+    while (currPos.z > floorZ) { //While not below floor
+        //Record Previous Position
+        prevPos = currPos;
+        //Total Time
+        t+=timeStep;
+        //Move Position
+        currPos.x = prevPos.x + ((vel.x * timeStep) + (0.5f*acc.x*(powr(timeStep, 2))));
+        currPos.y = prevPos.y + ((vel.y * timeStep) + (0.5f*acc.y*(powr(timeStep, 2))));
+        currPos.z = prevPos.z + ((vel.z * timeStep) + (0.5f*acc.z*(powr(timeStep, 2))));
+        //Check if its passed zenith
+        if (floorMove == false) {
+            if (prevPos.z > currPos.z) {
+                floorZ = ptgtPos.z;
+                floorMove = true;
+                //Record zenith
+                launchPos.s7 = currPos.z;
+                //printf("%f, %f, %f, %f, %f, %i, %f, %f\n", launchZ, floorZ, tgtZ, currPosZ, combV, lpCnt, prevPosZ, t);
+            }
+        }
+        lpCnt+=1;
+        //Drag Forces
+        //Combined xyz velocity
+        combV = sqrt(powr(vel.x, 2)+powr(vel.y, 2)+powr(vel.z, 2));
+        //Drag Force xyz
+        dragForce = mortSigma*powr(combV, 2);
+        if (combV > 0.0f){
+            dragForce*=-1.0f;
+        }
+        //This actually gives the combined drag - not a velocity but reusing the class
+        force.x = dragForce * sin(elRad) * cos(az);
+        force.y = dragForce * sin(elRad) * sin(az);
+        force.z = dragForce * cos(elRad);
+        //Gravity Force
+        force.z-=gForce;
+        //Verlet Integration - TODO REMOVE THIS
+        avgAcc.x = 0.5*((force.x/mortMass)+acc.x);
+        avgAcc.y = 0.5*((force.y/mortMass)+acc.y);
+        avgAcc.z = 0.5*((force.z/mortMass)+acc.z);
+        //Alter Velocity - TODO USE FMA HERE
+        vel.x+=avgAcc.x*timeStep;
+        vel.y+=avgAcc.y*timeStep;
+        vel.z+=avgAcc.z*timeStep;
+        //Reset Vertlet
+        acc.x = avgAcc.x;
+        acc.y = avgAcc.y;
+        acc.z = avgAcc.z;
+    } //End while not below floor loop
+    //Record Miss point in 2float
+    //Record
+    missPosArr[gid] = (float2)(currPos.x, currPos.y);
+}
 
 
 __kernel void intersect(__global float* worldArr,  __global int* result)

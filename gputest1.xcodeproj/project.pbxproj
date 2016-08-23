@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		9418CC841B2F7A6800168646 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9418CC831B2F7A6800168646 /* main.cpp */; };
 		941F54D11B29A027004A9C8E /* utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941F54CF1B29A027004A9C8E /* utils.cpp */; };
+		94239CB71B8E468E0072FB08 /* blos.cl in Sources */ = {isa = PBXBuildFile; fileRef = 94239CB61B8E468E0072FB08 /* blos.cl */; };
 		94AEA3BD1B14F68900D07C96 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94AEA3BC1B14F68900D07C96 /* OpenCL.framework */; };
 		94DBDA391B2AFCE400F1EE69 /* main.cpp.singlekern in Sources */ = {isa = PBXBuildFile; fileRef = 94DBDA381B2AFCE400F1EE69 /* main.cpp.singlekern */; };
 /* End PBXBuildFile section */
@@ -33,6 +34,7 @@
 		941F54CE1B2992CC004A9C8E /* working_basicint */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = working_basicint; sourceTree = "<group>"; };
 		941F54CF1B29A027004A9C8E /* utils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = utils.cpp; sourceTree = "<group>"; };
 		941F54D01B29A027004A9C8E /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
+		94239CB61B8E468E0072FB08 /* blos.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = blos.cl; sourceTree = "<group>"; };
 		94676F271B29C03400EA5CC6 /* recShot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = recShot.cpp; sourceTree = "<group>"; };
 		94676F281B29C03400EA5CC6 /* recShot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = recShot.h; sourceTree = "<group>"; };
 		94676F2A1B29C06600EA5CC6 /* velocity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = velocity.h; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 				94AEA3BF1B1C35D300D07C96 /* intersect.h */,
 				94AEA3C11B1C362700D07C96 /* position.h */,
 				94AEA3C21B21D45000D07C96 /* simplekern.cl */,
+				94239CB61B8E468E0072FB08 /* blos.cl */,
 				941F54CA1B28C284004A9C8E /* simplekern.cl.h */,
 				941F54CB1B28C2D3004A9C8E /* main.cpp.applehelp */,
 				941F54CD1B29905B004A9C8E /* build_settings */,
@@ -184,6 +187,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				94239CB71B8E468E0072FB08 /* blos.cl in Sources */,
 				941F54D11B29A027004A9C8E /* utils.cpp in Sources */,
 				94DBDA391B2AFCE400F1EE69 /* main.cpp.singlekern in Sources */,
 				9418CC841B2F7A6800168646 /* main.cpp in Sources */,
