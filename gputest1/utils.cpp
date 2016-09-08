@@ -16,7 +16,7 @@
 #include "gdal_priv.h"
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
-#include <cl.hpp>
+#include <OpenCL/cl.hpp>
 #else
 #include <CL/cl.h>
 #include <CL/cl.hpp>

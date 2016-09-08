@@ -14,7 +14,7 @@
 #include <iterator>
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
-#include <cl.hpp>
+#include <OpenCL/cl.hpp>
 #else
 #include <CL/cl.h>
 #include <CL/cl.hpp>
@@ -31,24 +31,18 @@
 #include <iomanip>
 //#include <recShot.h>
 
-//Reduction predicates
-bool distRed(const cl_float4 & obj) {
-    return obj.w < 10.0 || obj.w > 4500.0;
-}
-
 
 int main(int argc, const char * argv[]) {
     
     //Files, vars etc
-    char* demFName = "/Users/dusted-ipro/geodata/mount_chip.tif";
-    //char* intersectKernel = "/Users/dusted-ipro/Documents/code/code/xcode/gputest1/gputest1/simplekern.cl";
-    char* blosKernel = "/Users/dusted-ipro/Documents/code/code/xcode/gputest1/gputest1/blos.cl";
-    float tgtX = 560016.0;
-    float tgtY = 5118762.0;
+    char* demFName = "/Users/dusted-dstl/Documents/geodata/mount_chip.tif";
+    char* kernelsSrc = "/Users/dusted-dstl/Documents/xcodeworkspace/gpublos/gputest1/simplekern.cl";
+    float tgtX = 559786.0;
+    float tgtY = 5120048.0;
     double tgtPxX = 0.0;
     double tgtPxY = 0.0;
     int skipVal = 1000;
-    float minDist = 10.0;
+    float minDist = 600.0;
     float maxDist = 4500.0;
     float gravity = 9.82;
     //TODO: Alter this based on the altitude
@@ -65,13 +59,11 @@ int main(int argc, const char * argv[]) {
     float gForce = mortMass * gravity;
     //float launchZ = 0.0;
     float tgtZ = 0.0;
-    float tgtSize = 50.0;
-    char* fName = "/Users/dusted-ipro/geodata/gpu_out2.csv";
-    float elDeg = 85.0;
+    char* fName = "/Users/dusted-dstl/Documents/geodata/gpu_out1.csv";
+    float minElev = 45.0;
+    float maxElev = 85.0;
+    float thetaStep = 0.1;
     float timeStep = 0.1;
-    float totTime = 0.0;
-    //Single Trajectory vector
-    std::vector<cl_float4> outTrj = std::vector<cl_float4>();
     
     
     
@@ -107,6 +99,9 @@ int main(int argc, const char * argv[]) {
     
     // create platform
     cl::Platform::get(&platforms);
+    //CPU Implementation
+    //platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &devices);
+    //GPU Implementation
     platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &devices);
     //Query device info for memory size
     std::cout << devices[0].getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
@@ -118,7 +113,7 @@ int main(int argc, const char * argv[]) {
     cl::CommandQueue queue(context, devices[0]);
     
     // load opencl source
-    std::ifstream cl_file(blosKernel);
+    std::ifstream cl_file(kernelsSrc);
     std::string cl_string(std::istreambuf_iterator<char>(cl_file), (std::istreambuf_iterator<char>()));
     cl::Program::Sources source(1, std::make_pair(cl_string.c_str(), cl_string.length()+1));
     
@@ -129,7 +124,7 @@ int main(int argc, const char * argv[]) {
         
         // compile opencl source
         program.build(devices);
-        std::cout << "built kernel" << std::endl;
+        std::cout << "built program" << std::endl;
         
     }
     catch (cl::Error &err) {
@@ -141,14 +136,6 @@ int main(int argc, const char * argv[]) {
         return -1;
         
     }
-    
-    std::cout << "Loading Kern func" << std::endl;
-    // load named kernel from opencl source
-    cl::Kernel rangeChk(program, "rangeChk");
-    cl::Kernel init(program, "init");
-    cl::Kernel move(program, "move");
-    cl::Kernel drag(program, "drag");
-    cl::Kernel acc(program, "acc");
     
     std::cout << "Building indata" << std::endl;
     
@@ -169,503 +156,95 @@ int main(int argc, const char * argv[]) {
     float gt4 = float(adfGeoTransform[4]);
     float gt5 = float(adfGeoTransform[5]);
     std::cout << gt0 << " // " << adfGeoTransform[0] << std::endl;
-    float rasterXSize = float(poDataset->GetRasterXSize());
-    float rasterYSize = float(poDataset->GetRasterYSize());
+    int rasterXSize = poDataset->GetRasterXSize();
+    int rasterYSize = poDataset->GetRasterYSize();
     int taskSize = rasterXSize*rasterYSize;
-    std::cout << std::fixed << "rasterSizeX: " << rasterXSize << std::endl;
-    std::cout << std::fixed << "rasterSizeY: " << rasterYSize << std::endl;
+    std::cout << "rasterSizeX: " << rasterXSize << std::endl;
+    std::cout << "rasterSizeY: " << rasterYSize << std::endl;
     
     GDALRasterBand  *poBand;
     poBand = poDataset->GetRasterBand( 1 );
     int   nXSize = poBand->GetXSize();
     int   nYSize = poBand->GetYSize();
     
-    
-    //Data structures:
-    //float8(x, y ,z)
-    //pos.x, pos.y, pos.z
-    //There is no procidx - all vector elements will be processed - if not possible they are removed
-    //This will give us a float8 with x, y, z (x and y in world coords)
-    std::vector<cl_float4> demSP = Utils::GDAL2VEC2D (poDataset);
+    std::vector<float> demSP = Utils::GDAL2VEC (poDataset);
     GDALClose( (GDALDatasetH) poDataset );
-    std::cout << "Size of DEM in memory Ref (kb): " << (taskSize*sizeof(cl_float4))/1000 << std::endl;
+    std::cout << "Size of DEM in memory Ref (kb): " << (taskSize*sizeof(float))/1000 << std::endl;
     std::cout << "Size of DEM: " << demSP.size() << " tasksize: " << taskSize << std::endl;
     //Get the tgtz ready
     Utils::coordtoPx2d(tgtX, tgtY, tgtPxX, tgtPxY, adfGeoTransform, rasterXSize, rasterYSize);
-    //tgtZ = demSP.at(tgtPxY).at(tgtPxX);
-    tgtZ = demSP.at(tgtPxY*rasterXSize+tgtPxX).z;
-    std::cout << " TgtZ: " << tgtZ << std::endl;
-    //Make Float4
-    cl_float4 tgtPos = {tgtX, tgtY, tgtZ, 0.0};
+    tgtZ = demSP.at(tgtPxY*rasterXSize+tgtPxX);
+    
+    //Build the array of possible launch angles
+    std::vector<float> thetaArr;
+    for (float i=minElev; i<maxElev; i+=thetaStep){
+        thetaArr.push_back(i);
+    }
+    float *h_thetaArr = new float[thetaArr.size()];
+    for (int i=0; i<thetaArr.size(); i++){
+        h_thetaArr[i] = thetaArr.at(i);
+    }
+    
+    //Build the array of output distances for each theta
+    float *h_distArr = new float[thetaArr.size()];
+    std::cout << "Parrellel Shots per DEM Px: " << thetaArr.size()<< std::endl;
     
     clock_t tt = clock();
-
     
-//RANGE//
     try {
-        //Input buffer object - here we are setting useHostPtr to true, so the data is not being copied across to the device
-        //Instead it is passed the pointer and data stays on host
-        //This is referenced - so no need to copy it back out after altering - but slower
-        cl::Buffer inBuffDEMFull(context, demSP.begin(), demSP.end(), true, true);
-        //Here the data is copied across to the device
-        //cl::Buffer inBuffDEMFull(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*demSP.size(), demSP, &err);
-        //cl::Buffer inBuffDEMFull(context, CL_MEM_READ_WRITE, sizeof(cl_float4)*demSP.size(), demSP, &err);
+        //THESE TWO FOR CPU - then COMMENT CPU
+        //Create a buffer object to this memory
+        cl::Buffer d_inBuffDEMFull = cl::Buffer(context, CL_MEM_READ_ONLY, taskSize*sizeof(float), NULL, &err);
+        cl::Buffer d_float4test = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float4), NULL, &err);
+        cl::Buffer d_outBuff = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(float), NULL, &err);
+        cl::Buffer d_thetaArr = cl::Buffer(context, CL_MEM_READ_ONLY, thetaArr.size()*sizeof(float), NULL, &err);
+        cl::Buffer d_distArr = cl::Buffer(context, CL_MEM_READ_WRITE, thetaArr.size()*sizeof(float), NULL, &err);
         
-
-        //Set Kernel Args - range
-        err = rangeChk.setArg(0, inBuffDEMFull);
-        err = rangeChk.setArg(1, sizeof(float), &tgtX);
-        err = rangeChk.setArg(2, sizeof(float), &tgtY);
-        err = rangeChk.setArg(3, sizeof(float), &minDist);
-        err = rangeChk.setArg(4, sizeof(float), &maxDist);
-        //err = kernel.setArg(5, outDistBuff);
-        if(err < 0) {
-            perror("Couldn't create a kernel argument");
-            exit(1);
+        //Out data on the host
+        float *h_output = new float[taskSize];
+        
+        //Write Buffers to device
+        queue.enqueueWriteBuffer(d_thetaArr,CL_TRUE,0,thetaArr.size()*sizeof(float), h_thetaArr);
+        
+        //Build Kernels
+        //cl::KernelFunctor rangeChk(cl::Kernel(program,"rangeChk"),queue,cl::NullRange,cl::NDRange(taskSize),cl::NullRange);
+        cl::KernelFunctor shot(cl::Kernel(program,"shot"),queue,cl::NullRange,cl::NDRange(thetaArr.size()),cl::NullRange);
+        
+        //Now firstly thin the data on device by range
+        cl_float4 tgtPos = {500.0, 500.0, 0.0, 0.0};
+        cl_float4 laPos = {0.0, 0.0, 0.0, 0.0};
+        float minTheta = 0.0;
+        for (int i=0; i<10; i++){
+            //rangeChk(d_inBuffDEMFull, d_outBuff, d_float4test, &tgtX, &tgtY, &minDist, &maxDist);
+            //Fire Shots
+            shot(d_thetaArr, d_distArr, tgtPos, laPos, timeStep);
+            //Read data back
+            err = queue.enqueueReadBuffer(d_distArr, CL_TRUE, 0, thetaArr.size()*sizeof(float), h_distArr, NULL, NULL);
+            //Get Closest theta
+            float minDist = h_distArr[0];
+            for (int ii=1; ii<thetaArr.size(); ii++){
+                if (h_distArr[ii]<minDist){
+                    minDist=h_distArr[ii];
+                    //Also get the theta for this distance
+                    minTheta = h_thetaArr[ii];
+                }
+            }
+            std::cout << "Theta and Min Dist: " << minDist << " // " << minTheta << std::endl;
         }
-    
-        // Execute Range Chk kernel
-        //This executes just one work item - queue.enqueueTask(kernel);
-        cl::NDRange offset(0);
-        cl::NDRange local_size(512);
-        cl::NDRange global_size(taskSize);
-        queue.enqueueNDRangeKernel(rangeChk, offset, global_size);
+        
+        std::cout << "Size of out buff: " << sizeof(demSP) << std::endl;
+        
+        
+        // wait for completion
         queue.finish();
-        std::cout << "Done Range" << std::endl;
-//        for (float el=45.0; el<85.0; el+=20.0){
-//            queue.enqueueNDRangeKernel(rangeChk, offset, global_size);
-//            queue.finish();
-//            std::cout << "Done: " << el << std::endl;
-//        }
         
-        //Reduce by distance - efficiently
-        std::vector<cl_float4> ::iterator invalids = std::remove_if(demSP.begin(), demSP.end(), distRed);
-        demSP.erase(invalids, demSP.end());
-        std::cout << "Reduced DEM Size: " << demSP.size() << std::endl;
-
-
-//INIT MOTION
-        //Setup the buffers - copied
-        cl::Buffer d_velArr(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float4), NULL, &err);
-        cl::Buffer d_accArr(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float4), NULL, &err);
-        cl::Buffer d_forceArr(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float4), NULL, &err);
-        cl::Buffer d_posArr(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float4), NULL, &err);
-        cl::Buffer d_azRadArr(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float), NULL, &err);
-        cl::Buffer d_elRadArr(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float), NULL, &err);
+        std::cout << "Example output value: " << h_distArr[10]<< std::endl;
         
-        //Referenced
-        //cl::Buffer d_velArr(context, demSP.begin(), demSP.end(), true, true);
-        //cl::Buffer d_accArr(context, demSP.begin(), demSP.end(), true, true);
-        //cl::Buffer d_forceArr(context, demSP.begin(), demSP.end(), true, true);
-        //cl::Buffer cl_posArr(context, demSP.begin(), demSP.end(), true, true);
-        //cl::Buffer d_azRadArr(context, demSP.begin(), demSP.end(), true, true);
-        //cl::Buffer d_elRadArr(context, demSP.begin(), demSP.end(), true, true);
-        
-
-        //Set Kernel Args
-        //__global float4* DEMPosArr, __global float4* velArr, __global float4* accArr, __global float* azRad, __global float* elRad,
-        //float4 tgtPos, float elDeg, float muzzVel
-        err = init.setArg(0, inBuffDEMFull);
-        err = init.setArg(1, d_velArr);
-        err = init.setArg(2, d_accArr);
-        err = init.setArg(3, d_azRadArr);
-        err = init.setArg(4, d_elRadArr);
-        err = init.setArg(5, d_forceArr);
-        err = init.setArg(6, sizeof(cl_float4), &tgtPos);
-        err = init.setArg(7, sizeof(float), &elDeg);
-        err = init.setArg(8, sizeof(float), &muzzVel);
-        err = init.setArg(9, d_posArr);
-        if(err < 0) {
-            perror("Couldn't create a kernel argument - INIT");
-            exit(1);
-        }
-
-        err = queue.enqueueNDRangeKernel(init, offset, global_size);
-        std::cout << err << std::endl;
-        if(err < 0) {
-            perror("error in enqueue - INIT");
-            exit(1);
-        }
-        
-        //Wait for finish
-        err = queue.finish();
-        std::cout << "Finished queue" << std::endl;
-        if(err < 0) {
-            perror("error in finishing INIT");
-            exit(1);
-        }
-        std::cout << "Done Init Motion, setting args" << std::endl;
-        
-
-//MOVE, DRAG & ACC Setup
-        //Set Kern Args - MOVE
-        //__global float4* posArr, __global float4* velArr, __global float4* accArr, float timeStep
-        err = move.setArg(0, d_posArr);
-        err = move.setArg(1, d_velArr);
-        err = move.setArg(2, d_accArr);
-        err = move.setArg(3, sizeof(float), &timeStep);
-        
-        //Set kern args - Drag
-        //__global float4* velArr, __global float4* forceArr, float gForce, float mortSigma
-        err = drag.setArg(0, d_velArr);
-        err = drag.setArg(1, d_forceArr);
-        err = drag.setArg(2, d_azRadArr);
-        err = drag.setArg(3, d_elRadArr);
-        err = drag.setArg(4, sizeof(float), &gForce);
-        err = drag.setArg(5, sizeof(float), &mortSigma);
-        
-        //Set Kern Args - Acc
-        //__global float4* accArr, __global float4* forceArr, float mortMass
-        err = acc.setArg(0, d_accArr);
-        err = acc.setArg(1, d_forceArr);
-        err = acc.setArg(2, d_velArr);
-        err = acc.setArg(3, sizeof(float), &mortMass);
-        err = acc.setArg(4, sizeof(float), &timeStep);
-        
-//LOOP STARTS
-        for (int mot=0; mot < 435; mot++){
-            
-            totTime+=timeStep;
-            //std::cout << totTime << " // " << mot << std::endl;
-            
-            //Enqueue and wait for finish of this iter
-            err = queue.enqueueNDRangeKernel(move, offset, global_size);
-            if(err < 0) {
-                perror("error in enqueue - Move");
-                exit(1);
-            }
-            //Enqueue and wait for finish of this iter
-            err = queue.enqueueNDRangeKernel(drag, offset, global_size);
-            if(err < 0) {
-                perror("error in enqueue - Drag");
-                exit(1);
-            }
-            //Enqueue and wait for finish of this iter
-            err = queue.enqueueNDRangeKernel(acc, offset, global_size);
-            if(err < 0) {
-                perror("error in enqueue - Acc");
-                exit(1);
-            }
-            //Wait for finish
-            err = queue.finish();
-            //std::cout << "Finished queue" << std::endl;
-            if(err < 0) {
-                perror("error in finishing Queue");
-                exit(1);
-            }
-
-            //Print a single position
-            std::vector<cl_float4> h_posArr = std::vector<cl_float4>(demSP.size());
-            //err = cl::copy(queue, inBuffDEMFull, h_posArr.begin(), h_posArr.end());
-            err = cl::copy(queue, d_posArr, h_posArr.begin(), h_posArr.end());
-            //std::cout << std::fixed << h_posArr.back().x << " // " << std::fixed << h_posArr.back().y << " // " << std::fixed << h_posArr.back().z << std::endl;
-            //outTrj.push_back(h_posArr.back());
-        }
-        
-        
-        
-        
-//        //Copy the output to check
-//        std::vector<cl_float4> h_velArr = std::vector<cl_float4>(demSP.size());
-//        err = cl::copy(queue, d_velArr, h_velArr.begin(), h_velArr.end());
-//        std::cout << err << std::endl;
-//        if(err < 0) {
-//            perror("error in finishing");
-//            exit(1);
-//        }
-//        for (auto p : h_velArr) {
-//            //std::cout << std::fixed << p.x << " // " << std::fixed << p.y << " // " << std::fixed << p.z << std::endl;
-//        }
-    
         tt = clock() - tt;
         std::cout << "Done CL Proc: " << float(tt)/CLOCKS_PER_SEC << std::endl;
-        //Utils::singlefOut(outTrj, fName);
-        std::cout << "Written Outfile: " << fName << std::endl;
         
-
-        
-////OPTIMISE//
-//        cl::Kernel shotKernel(program, "shot");
-//        //Load optimise kernel
-//        cl::Kernel optimise(program, "optimise");
-//        //Load miss dist kernel
-//        cl::Kernel missDist(program, "missDist");
-//    
-//        //In DEM Buffer (2D)
-//        cl::Buffer inBuffDEMFull(context, demSP.begin(), demSP.end(), true, true);
-//        
-//        //Output Buffer of distances
-//        cl::Buffer d_missPosBuff(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float2), NULL, &err);
-//        
-//        //Opt El Buffer
-//        cl::Buffer d_optElBuff(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float), NULL, &err);
-//        
-//        //Set Kernel Args - Single Shot
-//        err = shotKernel.setArg(0, inBuffDEMFull);
-//        err = shotKernel.setArg(1, sizeof(float), &tgtX);
-//        err = shotKernel.setArg(2, sizeof(float), &tgtY);
-//        err = shotKernel.setArg(3, sizeof(float), &rasterXSize);
-//        err = shotKernel.setArg(4, sizeof(float), &rasterYSize);
-//        err = shotKernel.setArg(5, sizeof(float), &gt0);
-//        err = shotKernel.setArg(6, sizeof(float), &gt1);
-//        err = shotKernel.setArg(7, sizeof(float), &gt2);
-//        err = shotKernel.setArg(8, sizeof(float), &gt3);
-//        err = shotKernel.setArg(9, sizeof(float), &gt4);
-//        err = shotKernel.setArg(10, sizeof(float), &gt5);
-//        err = shotKernel.setArg(11, sizeof(float), &mortMass);
-//        err = shotKernel.setArg(12, sizeof(float), &muzzVel);
-//        err = shotKernel.setArg(13, sizeof(float), &mortSigma);
-//        err = shotKernel.setArg(14, sizeof(float), &gForce);
-//        err = shotKernel.setArg(15, sizeof(float), &tgtZ);
-//        err = shotKernel.setArg(16, d_missPosBuff);
-//        if(err < 0) {
-//            perror("Couldn't create a kernel argument for shot kern");
-//            exit(1);
-//        }
-//        
-//        //Set Kernel Args - Miss Dist
-//        err = missDist.setArg(0, d_missPosBuff);
-//        err = missDist.setArg(1, sizeof(float), &tgtX);
-//        err = missDist.setArg(2, sizeof(float), &tgtY);
-//        err = missDist.setArg(3, sizeof(float), &tgtSize);
-//        if(err < 0) {
-//            perror("Couldn't create a kernel argument for miss dist");
-//            exit(1);
-//        }
-//        
-//        //Optimise loop - shots from 85.0 - 45.0 at 0.05 intervals
-//        for (float i=45.0; i<85.0; i+=20.0) {
-//            
-//            //Fire Shot (cl)
-//            
-//            //Get range from land to tgt (cl)
-//            
-//            //Copy distance data out & check against previous (master)
-//        
-//        }
-    
-            
-////OPTIMISE//
-//
-//        std::cout << "Loading Kern funcs" << std::endl;
-//        // load setup opt el
-//        cl::Kernel setOptElKern(program, "setupOptEl");
-//        // load setup seedjump
-//        cl::Kernel setupSeedJump(program, "setupSeedJump");
-//        // load shot kernel
-//        cl::Kernel shotKernel(program, "shot");
-//        //Load optimise kernel
-//        cl::Kernel optimise(program, "optimise");
-//        //Load miss dist kernel
-//        cl::Kernel missDist(program, "missDist");
-//        //Load Chk otp kernel
-//        cl::Kernel checkOpt(program, "checkOpt");
-//
-//        
-//        //Create new input buffer for procIdx (output from previous)
-//        //Again we are not copying this into the device
-//        cl::Buffer d_inBuffProxIdx(context, h_outArr.begin(), h_outArr.end(), true, true);
-//        
-//        //Opt El Buffer
-//        cl::Buffer d_optElBuff(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float), NULL, &err);
-// 
-//        //Output Buffer of distances
-//        cl::Buffer d_missPosBuff(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float2), NULL, &err);
-//        
-//        //Stored buffer of previous dotP's
-//        cl::Buffer d_dotPBuff(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float), NULL, &err);
-//        
-//        //Stored buffer of seedJumps
-//        cl::Buffer d_seedJumpBuff(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float), NULL, &err);
-//        
-//        //Set Kernel Args - Setup Opt El
-//        err = setOptElKern.setArg(0, d_optElBuff);
-//        
-//        //Set Kernel Args - Setup Seed Jump
-//        err = setupSeedJump.setArg(0, d_seedJumpBuff);
-//        
-//        //Set them up
-//        queue.enqueueNDRangeKernel(setOptElKern, offset, global_size);
-//        queue.enqueueNDRangeKernel(setupSeedJump, offset, global_size);
-//        queue.finish();
-//
-//        //Set Kernel Args - Single Shot
-//        err = shotKernel.setArg(0, inBuffDEMFull);
-//        err = shotKernel.setArg(1, sizeof(float), &tgtX);
-//        err = shotKernel.setArg(2, sizeof(float), &tgtY);
-//        err = shotKernel.setArg(3, sizeof(float), &rasterXSize);
-//        err = shotKernel.setArg(4, sizeof(float), &rasterYSize);
-//        err = shotKernel.setArg(5, sizeof(float), &gt0);
-//        err = shotKernel.setArg(6, sizeof(float), &gt1);
-//        err = shotKernel.setArg(7, sizeof(float), &gt2);
-//        err = shotKernel.setArg(8, sizeof(float), &gt3);
-//        err = shotKernel.setArg(9, sizeof(float), &gt4);
-//        err = shotKernel.setArg(10, sizeof(float), &gt5);
-//        err = shotKernel.setArg(11, sizeof(float), &mortMass);
-//        err = shotKernel.setArg(12, sizeof(float), &muzzVel);
-//        err = shotKernel.setArg(13, sizeof(float), &mortSigma);
-//        err = shotKernel.setArg(14, sizeof(float), &gForce);
-//        err = shotKernel.setArg(15, sizeof(float), &tgtZ);
-//        err = shotKernel.setArg(16, d_inBuffProxIdx);
-//        err = shotKernel.setArg(17, d_missPosBuff);
-//        if(err < 0) {
-//            perror("Couldn't create a kernel argument for shot kern");
-//            exit(1);
-//        }
-//        
-//        //Optimise Args
-//        err = optimise.setArg(0, sizeof(float), &rasterXSize);
-//        err = optimise.setArg(1, sizeof(float), &rasterYSize);
-//        err = optimise.setArg(2, sizeof(float), &gt0);
-//        err = optimise.setArg(3, sizeof(float), &gt1);
-//        err = optimise.setArg(4, sizeof(float), &gt2);
-//        err = optimise.setArg(5, sizeof(float), &gt3);
-//        err = optimise.setArg(6, sizeof(float), &gt4);
-//        err = optimise.setArg(7, sizeof(float), &gt5);
-//        err = optimise.setArg(8, sizeof(float), &tgtX);
-//        err = optimise.setArg(9, sizeof(float), &tgtY);
-//        err = optimise.setArg(10, d_missPosBuff);
-//        err = optimise.setArg(11, d_dotPBuff);
-//        err = optimise.setArg(12, d_seedJumpBuff);
-//        err = optimise.setArg(13, d_optElBuff);
-//        err = optimise.setArg(14, d_inBuffProxIdx);
-//        if(err < 0) {
-//            perror("Couldn't create a kernel argument for optimise kern");
-//            exit(1);
-//        }
-//        
-//        //Set Kernel Args - Miss Dist
-//        err = missDist.setArg(0, d_missPosBuff);
-//        err = missDist.setArg(1, d_inBuffProxIdx);
-//        err = missDist.setArg(2, sizeof(float), &tgtX);
-//        err = missDist.setArg(3, sizeof(float), &tgtY);
-//        err = missDist.setArg(4, sizeof(float), &tgtSize);
-//        if(err < 0) {
-//            perror("Couldn't create a kernel argument for miss dist");
-//            exit(1);
-//        }
-//        
-//        //Set Kernel Args - Check Opt
-//        err = checkOpt.setArg(0, d_optElBuff);
-//        err = checkOpt.setArg(1, d_seedJumpBuff);
-//        err = checkOpt.setArg(2, d_inBuffProxIdx);
-//        if(err < 0) {
-//            perror("Couldn't create a kernel argument for Check Opt");
-//            exit(1);
-//        }
-//
-//        
-//        std::cout << "Queuing Executing Kernels" << std::endl;
-//        // Setup Opt El kernel
-//        queue.enqueueNDRangeKernel(setOptElKern, offset, global_size);
-//        
-//        // execute first shot
-//        queue.enqueueNDRangeKernel(shotKernel, offset, global_size);
-//        queue.finish();
-//        
-//        std::cout << "Done First Run" << std::endl;
-//        
-//        //For loop starts here //
-//        for (int i=0; i < 2; i++){
-//            std::cout << "Done Opt Loop: " << i << std::endl;
-//        
-//            //Distance Chk
-//            queue.enqueueNDRangeKernel(missDist, offset, global_size);
-//            
-//            //Optimise
-//            queue.enqueueNDRangeKernel(optimise, offset, global_size);
-//            
-//            //Check Status
-//            queue.enqueueNDRangeKernel(checkOpt, offset, global_size);
-//            
-//            //execute shot
-//            queue.enqueueNDRangeKernel(shotKernel, offset, global_size);
-//            queue.finish();
-//            
-//            //Lets see how many proc's we're left with
-//            std::vector<cl_int> h_chkProcIdx = std::vector<cl_int>(taskSize);
-//            cl::copy(queue, d_inBuffProxIdx, h_chkProcIdx.begin(), h_chkProcIdx.end());
-//            int totProc;
-//            for (int p : h_chkProcIdx){
-//                totProc+=p;
-//            }
-//            std::cout << "Tot Proc Idx: " << totProc << std::endl;
-//        }
-//        
-//        //End loop here - we now have an optelArr with optimum elevations for shots and procIdx with 0 and 1 for processing
-//        
-//        //std::cout << "Queuing Copy Output" << std::endl;
-//        //Copy the output
-//        std::vector<cl_float> h_outOptArr = std::vector<cl_float>(taskSize);
-//        cl::copy(queue, d_missPosBuff, h_outOptArr.begin(), h_outOptArr.end());
-//        
-//        // wait for completion
-//        std::cout << "Waiting for completion - Optimise" << std::endl;
-        
-
-        //Check some outputs
-//        for (auto p : h_outOptArr ){
-//                std::cout.precision(15);
-//                std::cout << std::fixed << p << std::endl;
-//        }
-        
-////        for (float p : d_optElArr){
-////            if (p != 8888.0f && p > 0.0f){
-////                std::cout.precision(15);
-////                std::cout << " OptEl Success: " << std::fixed << p << std::endl;
-////            }
-////        }
-//        std::cout.precision(15);
-//        std::cout << " minDist: " << std::fixed << minDist << std::endl;
-        
-        
-        
-
-        
-        //THIS FOR GPU
-        //        int tst = 0;
-        //        for (int i; i<taskSize; i++){
-        //            if (h_outArr.at(i) > tst){
-        //                tst=h_outArr.at(i);
-        //                std::cout << "Max Val Out: " << tst << std::endl;
-        //            }
-        //        }
-        
-        
-        //Find Maximum in outputs - checking
-        //int tst = 0;
-        //for (int i; i<taskSize; i++){
-        //    if (outArr[i] > tst){
-        //        tst=outArr[i];
-        //        std::cout << "Max Val Out: " << tst << std::endl;
-        //    }
-        //}
-        //std::cout << "Max Val Out: " << tst << std::endl;
-        
-        /*
-         //Drop the output to a textfile
-         std::ofstream output(fName);
-         if (!output) { // check the file opened OK
-         std::cerr << "error: open file for output failed!" << std::endl;
-         return 1;
-         }
-         //Headers
-         output << "Position X" << "," << "Position Y" << "," << "pixelX" << "," << "pixelY" << "," << "result" << std::endl;
-         //Sizes should all be same
-         for (unsigned int i=0; i<taskSize; i++){
-         float pxX, pxY;
-         //Work out pixel location adn launch from 1d index
-         float tmp = std::modf(float(i)/rasterXSize, &pxY);
-         float tmp2 = std::modf(tmp * rasterXSize, &pxX);
-         //std::cout << gt0 << " // " << gt1 << " // " << gt2 << std::endl;
-         float X = gt0+(pxX*gt1)+pxY*gt2;
-         float Y = gt3+(pxX*gt4)+pxY*gt5;
-         // the ofstream object replaces std::cout here, then its the same use
-         output << std::setprecision(10) << X << "," << Y << "," << pxX << "," << pxY << "," << h_outArr[i] << std::endl;
-         }
-         output.close();
-         */
-        
+        //Cleanup
+        delete[] h_output;
         
     }
     catch (cl::Error &err) {
@@ -677,8 +256,16 @@ int main(int argc, const char * argv[]) {
         return -1;
     }
     
-    
     std::cout << "Done" << std::endl;
     
     return 0;
 }
+
+
+
+
+
+
+
+
+

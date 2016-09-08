@@ -7,11 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		9418CC841B2F7A6800168646 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9418CC831B2F7A6800168646 /* main.cpp */; };
+		85D6EA0A1D805F9F00E18DD8 /* main.cpp.basicworks in Sources */ = {isa = PBXBuildFile; fileRef = 85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */; };
+		9418CC841B2F7A6800168646 /* main.cpp.complex in Sources */ = {isa = PBXBuildFile; fileRef = 9418CC831B2F7A6800168646 /* main.cpp.complex */; };
 		941F54D11B29A027004A9C8E /* utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941F54CF1B29A027004A9C8E /* utils.cpp */; };
 		94239CB71B8E468E0072FB08 /* blos.cl in Sources */ = {isa = PBXBuildFile; fileRef = 94239CB61B8E468E0072FB08 /* blos.cl */; };
 		94AEA3BD1B14F68900D07C96 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94AEA3BC1B14F68900D07C96 /* OpenCL.framework */; };
-		94DBDA391B2AFCE400F1EE69 /* main.cpp.singlekern in Sources */ = {isa = PBXBuildFile; fileRef = 94DBDA381B2AFCE400F1EE69 /* main.cpp.singlekern */; };
+		94DBDA391B2AFCE400F1EE69 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94DBDA381B2AFCE400F1EE69 /* main.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,7 +28,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		9418CC831B2F7A6800168646 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.basicworks; sourceTree = "<group>"; };
+		9418CC831B2F7A6800168646 /* main.cpp.complex */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.complex; sourceTree = "<group>"; };
 		941F54CA1B28C284004A9C8E /* simplekern.cl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = simplekern.cl.h; sourceTree = "<group>"; };
 		941F54CB1B28C2D3004A9C8E /* main.cpp.applehelp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.applehelp; sourceTree = "<group>"; };
 		941F54CD1B29905B004A9C8E /* build_settings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build_settings; sourceTree = "<group>"; };
@@ -59,7 +61,7 @@
 		94AEA3BF1B1C35D300D07C96 /* intersect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = intersect.h; sourceTree = "<group>"; };
 		94AEA3C11B1C362700D07C96 /* position.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = position.h; sourceTree = "<group>"; };
 		94AEA3C21B21D45000D07C96 /* simplekern.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = simplekern.cl; sourceTree = "<group>"; };
-		94DBDA381B2AFCE400F1EE69 /* main.cpp.singlekern */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.singlekern; sourceTree = "<group>"; };
+		94DBDA381B2AFCE400F1EE69 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		94E445B21B2E1C9A0040918A /* optUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = optUtils.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -125,8 +127,9 @@
 				94676F281B29C03400EA5CC6 /* recShot.h */,
 				94676F2A1B29C06600EA5CC6 /* velocity.h */,
 				94676F471B29D74F00EA5CC6 /* main.cpp.fucked */,
-				94DBDA381B2AFCE400F1EE69 /* main.cpp.singlekern */,
-				9418CC831B2F7A6800168646 /* main.cpp */,
+				94DBDA381B2AFCE400F1EE69 /* main.cpp */,
+				9418CC831B2F7A6800168646 /* main.cpp.complex */,
+				85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */,
 			);
 			path = gputest1;
 			sourceTree = "<group>";
@@ -189,8 +192,9 @@
 			files = (
 				94239CB71B8E468E0072FB08 /* blos.cl in Sources */,
 				941F54D11B29A027004A9C8E /* utils.cpp in Sources */,
-				94DBDA391B2AFCE400F1EE69 /* main.cpp.singlekern in Sources */,
-				9418CC841B2F7A6800168646 /* main.cpp in Sources */,
+				94DBDA391B2AFCE400F1EE69 /* main.cpp in Sources */,
+				85D6EA0A1D805F9F00E18DD8 /* main.cpp.basicworks in Sources */,
+				9418CC841B2F7A6800168646 /* main.cpp.complex in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
