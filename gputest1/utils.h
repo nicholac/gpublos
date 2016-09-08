@@ -47,6 +47,7 @@ public:
     
     static std::vector<float> GDAL2VEC (GDALDataset *poDataset);
     
+    static void GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr);
     
     static std::vector<cl_float4> GDAL2VEC2D (GDALDataset *poDataset);
     

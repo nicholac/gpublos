@@ -151,6 +151,54 @@ std::vector<float> Utils::GDAL2VEC (GDALDataset *poDataset) {
     return worldZPtr;
 }
 
+void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
+    
+    /*
+     * Read an entire GDAL DEM into float8 vector shared pointer memory!
+     * float8(x,y,z,theta,dist,runflag,blos,tlos)
+     * Also build the x and y coords
+     */
+    
+    
+    GDALRasterBand  *poBand;
+    poBand = poDataset->GetRasterBand( 1 );
+    int   nXSize = poBand->GetXSize();
+    int   nYSize = poBand->GetYSize();
+    double        adfGeoTransform[6];
+    poDataset->GetGeoTransform( adfGeoTransform );
+    //Options around storing shared ptr's for each row inside the top vector, for now going easy...
+    //TODO: Store each row as a shared ptr - this will be resused and flattened
+    std::vector<double> rowVec;
+    //Using vector instead of CPLMalloc so memory is cleared by compiler...
+    typedef std::vector<float> raster_data_t;
+    raster_data_t scanline(nXSize);
+    
+    //TODO: Improve this to accommodate where we dont have enough memory for the whole ptr...
+    
+    //Start looping and reading rows into the smart ptr
+    //NOTE: This ends in a Y, X array...
+    int cnt = 0;
+    for (int row = 0; row < nYSize; row++)  {
+        //Read one column from gdal
+        poBand->RasterIO( GF_Read, 0, row, nXSize, 1, &scanline[0], nXSize, 1, GDT_Float32, 0, 0 );
+        //Dump scan line into smart ptr for this row
+        for ( int i = 0; i < nXSize; i++ ) {
+            double mapX, mapY;
+            px2Coord(mapX, mapY, i, row, adfGeoTransform, nXSize, nYSize);
+            //initiate dist with high value for reduce and runflag
+            cl_float8 out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0f, 999999.0f, 1.0f, 0.0f, 0.0f};
+            worldZPtr[cnt]=(out);
+            cnt++;
+        }
+        //Copy the row vec into the output array
+        //TODO: Implement shared_ptr here
+        
+        //Empty the rowVec for security
+        scanline.clear();
+    }
+    return;
+}
+
 void Utils::getzVal (std::shared_ptr<position>& inPos, const double geoTransform[6],
                            const std::shared_ptr <std::vector<std::vector<double>>>& demData,
                            const double& rasterXSize, const double& rasterYSize) {
