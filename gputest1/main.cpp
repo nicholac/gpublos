@@ -25,7 +25,7 @@
 #include <cmath>
 //#include <position.h>
 #include "gdal_priv.h"
-#include <Utils.h>
+#include "utils.h"
 //#include <worldParams.h>
 //#include <motionUtils.h>
 #include <iomanip>
@@ -35,9 +35,12 @@
 int main(int argc, const char * argv[]) {
     
     //Files, vars etc
-    char* demFName = "/Users/dusted-dstl/Documents/geodata/mount_chip.tif";
-    //char* demFName = "/Users/dusted-dstl/Documents/geodata/mount.dem";
+    //char* demFName = "/Users/dusted-dstl/Documents/geodata/mount_chip.tif";
+    char* demFName = "/Users/dusted-dstl/Documents/geodata/mount.dem";
     char* kernelsSrc = "/Users/dusted-dstl/Documents/xcodeworkspace/gpublos/gputest1/simplekern.cl";
+    //Linux
+    //char* demFName = "/home/ec2-user/gputest1/mount.dem";
+    //char* kernelsSrc = "/home/ec2-user/gputest1/simplekern.cl";
     float tgtX = 559786.0;
     float tgtY = 5120048.0;
     double tgtPxX = 0.0;
@@ -80,8 +83,8 @@ int main(int argc, const char * argv[]) {
         exit(1);
     }
     std::cout << " All Platforms follow " << std::endl;
-    for (auto plat : platforms) {
-        std::cout << plat.getInfo<CL_PLATFORM_NAME>() << std::endl;
+    for (int i=0; i<platforms.size(); i++) {
+        std::cout << platforms[i].getInfo<CL_PLATFORM_NAME>() << std::endl;
     }
     cl::Platform default_platform=platforms[0];
     std::cout << "Querying platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
@@ -93,10 +96,10 @@ int main(int argc, const char * argv[]) {
         exit(1);
     }
     std::cout << " All Devices follow " << std::endl;
-    for (auto dev : devices) {
-        std::cout << "Device Name: " << dev.getInfo<CL_DEVICE_NAME>() << std::endl;
-        std::cout << "Device Global Mem max size (mb): " << dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()/1000000 << std::endl;
-        std::cout << "Device Local Mem max size: " << dev.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
+    for (int i=0; i<devices.size(); i++) {
+        std::cout << "Device Name: " << devices[i].getInfo<CL_DEVICE_NAME>() << std::endl;
+        std::cout << "Device Global Mem max size (mb): " << devices[i].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()/1000000 << std::endl;
+        std::cout << "Device Local Mem max size: " << devices[i].getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
     }
     
     
@@ -159,9 +162,12 @@ int main(int argc, const char * argv[]) {
     float gt3 = float(adfGeoTransform[3]);
     float gt4 = float(adfGeoTransform[4]);
     float gt5 = float(adfGeoTransform[5]);
+    cl_float8 cl_geoTrans = {float(adfGeoTransform[0]), float(adfGeoTransform[1]), float(adfGeoTransform[2]), float(adfGeoTransform[3]),
+        float(adfGeoTransform[4]), float(adfGeoTransform[5])};
     std::cout << gt0 << " // " << adfGeoTransform[0] << std::endl;
     int rasterXSize = poDataset->GetRasterXSize();
     int rasterYSize = poDataset->GetRasterYSize();
+    cl_float2 cl_rasterSize = {float(rasterXSize), float(rasterYSize)};
     int taskSize = rasterXSize*rasterYSize;
     std::cout << "rasterSizeX: " << rasterXSize << std::endl;
     std::cout << "rasterSizeY: " << rasterYSize << std::endl;
@@ -178,16 +184,24 @@ int main(int argc, const char * argv[]) {
     cl_float8 *output_demSP = new cl_float8[taskSize];
     Utils::GDAL2FLOAT8(poDataset, h_demSP);
     
+    //Load DEMZ's into single Arr
+    float *h_demZArr = new float[taskSize];
+    for (int i=0; i<taskSize; i++){
+        //Only want the z's
+        h_demZArr[i] = h_demSP[i].s2;
+    }
+    
+    
     GDALClose( (GDALDatasetH) poDataset );
     std::cout << "Size of DEM in memory Ref (kb): " << (taskSize*sizeof(float))/1000 << std::endl;
     std::cout << "Size of DEM: " << taskSize << " tasksize: " << taskSize << std::endl;
     std::cout << "Size of DEM as Float8 (mb): " << taskSize*sizeof(cl_float8)/1000000 << std::endl;
     std::cout << "Will the whole DEM fit into Global mem @ float8?: " << std::endl;
     bool chkGlobalMem = 0;
-    for (auto dev : devices) {
-        chkGlobalMem = taskSize*sizeof(cl_float8) < dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
-        std::cout << "Device Name: " << dev.getInfo<CL_DEVICE_NAME>() << std::endl;
-        std::cout << "Sizes (dem, global mem) & Chk: " << taskSize*sizeof(cl_float8) << " // " << dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() << " // " << chkGlobalMem << std::endl;
+    for (int i=0; i<devices.size(); i++) {
+        chkGlobalMem = taskSize*sizeof(cl_float8) < devices[i].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+        std::cout << "Device Name: " << devices[i].getInfo<CL_DEVICE_NAME>() << std::endl;
+        std::cout << "Sizes (dem, global mem) & Chk: " << taskSize*sizeof(cl_float8) << " // " << devices[i].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() << " // " << chkGlobalMem << std::endl;
     }
     if (chkGlobalMem == 0){
         std::cout << "Not enough Global memory for the DEM on this device - aborting " << std::endl;
@@ -209,8 +223,8 @@ int main(int argc, const char * argv[]) {
     std::cout << "Parrellel Shots per DEM Px: " << thetaArr.size()<< std::endl;
     std::cout << "Total shots: " << thetaArr.size()*taskSize<< std::endl;
     
-    clock_t tt = clock();
-    clock_t tt_real = clock();
+    //clock_t tt = clock();
+    //clock_t tt_real = clock();
     
     try {
         std::cout << "Loading Buffers " << std::endl;
@@ -220,6 +234,7 @@ int main(int argc, const char * argv[]) {
         cl::Buffer d_outBuff = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(float), NULL, &err);
         cl::Buffer d_thetaArr = cl::Buffer(context, CL_MEM_READ_ONLY, thetaArr.size()*sizeof(float), NULL, &err);
         cl::Buffer d_distArr = cl::Buffer(context, CL_MEM_READ_WRITE, thetaArr.size()*sizeof(float), NULL, &err);
+        cl::Buffer d_demZArr = cl::Buffer(context, CL_MEM_READ_ONLY, taskSize*sizeof(float), NULL, &err);
         
         //Out data on the host
         float *h_output = new float[taskSize];
@@ -228,7 +243,11 @@ int main(int argc, const char * argv[]) {
         //Write Buffers to device
         //Theta Arr
         queue.enqueueWriteBuffer(d_thetaArr,CL_TRUE,0,thetaArr.size()*sizeof(float), h_thetaArr);
+        //DEM Arr
         queue.enqueueWriteBuffer(d_inBuffDEMFull,CL_TRUE,0,taskSize*sizeof(cl_float8), h_demSP);
+        //DEM Z Arr
+        queue.enqueueWriteBuffer(d_demZArr,CL_TRUE,0,taskSize*sizeof(float), h_demZArr);
+        
         
         //WORKS
         //Build Kernels
@@ -239,7 +258,12 @@ int main(int argc, const char * argv[]) {
         std::cout << "Building kernels " << std::endl;
         cl::Kernel rangeChk = cl::Kernel(program, "rangeChk", &err);
         cl::Kernel shotOpt = cl::Kernel(program, "shotOpt", &err);
+        cl::Kernel shotOptThetaFast = cl::Kernel(program, "shotOptThetaFast", &err);
+        cl::Kernel shotOptDem = cl::Kernel(program, "shotOptDem", &err);
+        cl::Kernel shotOptDemFast = cl::Kernel(program, "shotOptDemFast", &err);
         cl::Kernel thetaDistReduce = cl::Kernel(program, "thetaDistReduce", &err);
+        cl::Kernel demIntersectFast = cl::Kernel(program, "demIntersectFast", &err);
+        
         
         //Dummy target position
         cl_float4 tgtPos = {559786.0, 5120048.0, 0.0, 0.0};
@@ -268,12 +292,31 @@ int main(int argc, const char * argv[]) {
         //cl_float4 laPos = {0.0, 0.0, 0.0, 0.0};
         float minTheta = 0.0;
         
-        std::cout << "Enqueue Args - shotOpt " << std::endl;
+        //Works - DEM Fast
+        //std::cout << "Shot Args" << std::endl;
+        //err = shotOptDemFast.setArg(0, d_inBuffDEMFull);
+        //err = shotOptDemFast.setArg(1, tgtPos);
+        //err = shotOptDemFast.setArg(2, timeStep);
+        //queue.finish();
+        
+        //Works - DEM Fast
+        std::cout << "Intersect Args" << std::endl;
+        err = demIntersectFast.setArg(0, d_inBuffDEMFull);
+        err = demIntersectFast.setArg(1, tgtPos);
+        err = demIntersectFast.setArg(2, timeStep);
+        err = demIntersectFast.setArg(3, d_demZArr);
+        err = demIntersectFast.setArg(4, cl_geoTrans);
+        err = demIntersectFast.setArg(5, cl_rasterSize);
+        queue.finish();
+        
+        
+        //WORKS - Theta Fast
+        std::cout << "Enqueue Args - shotOptThetaFast " << std::endl;
         //Build the static input args - ShotOpt
-        err = shotOpt.setArg(0, d_thetaArr);
-        err = shotOpt.setArg(1, d_distArr);
-        err = shotOpt.setArg(2, tgtPos);
-        err = shotOpt.setArg(4, timeStep);
+        err = shotOptThetaFast.setArg(0, d_thetaArr);
+        err = shotOptThetaFast.setArg(1, d_distArr);
+        err = shotOptThetaFast.setArg(2, tgtPos);
+        err = shotOptThetaFast.setArg(4, timeStep);
         queue.finish();
         
         std::cout << "Enqueue Args - thetaReduce" << std::endl;
@@ -283,19 +326,61 @@ int main(int argc, const char * argv[]) {
         err = thetaDistReduce.setArg(2, d_inBuffDEMFull);
         queue.finish();
         
+        //Read the processed DEM data back out to get the number of range thinned shots and to loop for theta optim input
+        err = queue.enqueueReadBuffer(d_inBuffDEMFull, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_demSP, NULL, NULL);
+        // wait for completion
+        queue.finish();
         
-        //CL - Loop the optimisation brute force
+        int inRngCnt = 0;
+        for (int i=0; i<taskSize; i++){
+            if (h_demSP[i].s5 == 1.0f){
+                inRngCnt++;
+            }
+        }
+        
+        std::cout << "Num Valid Shots after range thin: " << inRngCnt << std::endl;
+        
+        //std::clock_t start;
+        double duration;
+        
+        //start = std::clock();
+        
+        //CL - Loop the optimisation brute force - Whole DEM
         std::cout << "Starting Loop" << std::endl;
-        for (int i=0; i<1000; i++){
-            err = shotOpt.setArg(3, h_demSP[i]);
-            err = queue.enqueueNDRangeKernel(shotOpt, cl::NullRange, cl::NDRange(thetaArr.size()), cl::NullRange, NULL, NULL);
-            queue.finish();
+        int loops = 20;
+        
+        //DEM Parrellel Version
+        int runCnt = 0;
+        int skipCnt = 0;
+        for (int i=0; i<loops; i++){
+            //DEM Parallel - Works and much faster with new kernel
+            //err = queue.enqueueNDRangeKernel(shotOptDem, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+            //err = queue.enqueueNDRangeKernel(shotOptDemFast, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+            //queue.finish();
+            //std::cout << "Done reduce " << i << std::endl;
             
-            err = thetaDistReduce.setArg(3, i);
-            err = queue.enqueueNDRangeKernel(thetaDistReduce, cl::NullRange, cl::NDRange(thetaArr.size()), cl::NullRange, NULL, NULL);
-            queue.finish();
+            //WORKS - Theta Parallel
+//            if (h_demSP[i].s5 == 1.0f){
+//                runCnt++;
+//                //Fire Shots
+//                err = shotOptThetaFast.setArg(3, h_demSP[i]);
+//                err = queue.enqueueNDRangeKernel(shotOptThetaFast, cl::NullRange, cl::NDRange(thetaArr.size()), cl::NullRange, NULL, NULL);
+//                queue.finish();
+//                
+//                //Find Closest - write to DEM Arr on device
+//                err = thetaDistReduce.setArg(3, i);
+//                err = queue.enqueueNDRangeKernel(thetaDistReduce, cl::NullRange, cl::NDRange(thetaArr.size()), cl::NullRange, NULL, NULL);
+//                queue.finish();
+//                
+//            } else {
+//                skipCnt++;
+//            }
+//            
+//            //Some prints
+//            if (i%1000 == 0){
+//                std::cout << "Runs / Skips / Total: " << runCnt << " / " << skipCnt << " / " << i << std::endl;
+//            }
             
-            std::cout << "Done: " << i << std::endl;
             
             //WORKS but Slow - kernel Functors
             //Fire Shots
@@ -308,25 +393,40 @@ int main(int argc, const char * argv[]) {
             //thetaDistReduce(d_thetaArr, d_distArr, d_inBuffDEMFull, i);
         }
         
-        //Read the processed DEM data back out
+        //Intersect - Now we pivot and parallelize based on the DEM
+        //err = queue.enqueueNDRangeKernel(shotOptDem, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+        std::cout << "Done Theta optimisation, running intersect... " << std::endl;
+        err = queue.enqueueNDRangeKernel(demIntersectFast, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+        queue.finish();
+        
+        
+        //Read DEM Arr back out
         err = queue.enqueueReadBuffer(d_inBuffDEMFull, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_demSP, NULL, NULL);
         // wait for completion
         queue.finish();
         
-        std::cout << "Example output value: " << h_demSP[5].s4 << std::endl;
-        //Check how many no run flags we have
-        int cnt = 0;
-        for (int i=0; i<taskSize; i++){
-            if (h_demSP[i].s5 == 0.0) {
-                cnt++;
+        //Count the results
+        int blosIntersectCnt = 0;
+        int rangeSkip = 0;
+        for (int i=0; i<taskSize; i++) {
+            if (h_demSP[i].s6 == 1.0f) {
+                blosIntersectCnt++;
+            }
+            if (h_demSP[i].s5 == 0.0f) {
+                rangeSkip++;
             }
         }
-        std::cout << "Total no run flags // Total tasksize: " << cnt << " // " << taskSize << std::endl;
         
-        tt = clock() - tt;
-        tt_real = clock() - tt_real;
-        std::cout << "Done CL Proc: " << float(tt)/CLOCKS_PER_SEC << std::endl;
-        std::cout << "Real Clock: " << float(tt_real) << std::endl;
+        std::cout << "Total Pixels: " << taskSize << std::endl;
+        std::cout << "Total Range Skip:" << rangeSkip << std::endl;
+        std::cout << "Total Blos intersect:" << blosIntersectCnt << std::endl;
+        std::cout << "Total BLoS  Clear:" << taskSize-rangeSkip-blosIntersectCnt << std::endl;
+        
+        //tt = clock() - tt;
+        //tt_real = clock() - tt_real;
+        //std::cout << "Done CL Proc: " << float(tt)/CLOCKS_PER_SEC << std::endl;
+        //duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+        //std::cout << "Real Secs: " << duration << std::endl;
         
         //Cleanup
         delete[] h_output;

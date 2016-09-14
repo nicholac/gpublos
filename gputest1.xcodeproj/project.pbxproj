@@ -28,6 +28,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		85730B8D1D88861C0080A6EF /* build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.basicworks; sourceTree = "<group>"; };
 		9418CC831B2F7A6800168646 /* main.cpp.complex */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.complex; sourceTree = "<group>"; };
 		941F54CA1B28C284004A9C8E /* simplekern.cl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = simplekern.cl.h; sourceTree = "<group>"; };
@@ -130,6 +131,7 @@
 				94DBDA381B2AFCE400F1EE69 /* main.cpp */,
 				9418CC831B2F7A6800168646 /* main.cpp.complex */,
 				85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */,
+				85730B8D1D88861C0080A6EF /* build.sh */,
 			);
 			path = gputest1;
 			sourceTree = "<group>";

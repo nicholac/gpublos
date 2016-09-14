@@ -103,15 +103,15 @@
 //    outPos = inPos + (outVel * timeStep) + ((inAcc * pow(timeStep, 2.0f))*0.5f);
 //    
 //    //Drag and accels
-//    combVel = sqrt(pow(*outVel.x, 2.0f)+pow(outVel.y, 2.0f)+pow(outVel.z, 2.0f));
-//    //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
+//    combVel = sqrt(pow(*outVel.s0, 2.0f)+pow(outVel.s1, 2.0f)+pow(outVel.s2, 2.0f));
+//    //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
 //    dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
 //    //Normalise vector
 //    normVel = outVel / combVel;
 //    //Drag Components
 //    drag = (normVel * netForce)*-1.0f;
 //    //Add Gravity force
-//    drag.z+=((mortMass*9.801f)*-1.0f);
+//    drag.s2+=((mortMass*9.801f)*-1.0f);
 //    //Acceleration components
 //    outAcc = drag/mortMass;
 //
@@ -127,17 +127,17 @@ __kernel void rangeChk(__global float8* demArr, float4 chkPos, float minDist, fl
         int gid = get_global_id (0);
 
         //Work out the geo coords for this location
-        __private float diffX, diffY, chkDist;
+        __private float diffX, diffY, chkDist, chkDist2, chkDist3;
         __private float8 launchPos;
-        __private int cnt;
         launchPos = demArr[gid];
         //Check Ranges
-        diffX = fabs(chkPos.x-launchPos.x);
-        diffY = fabs(chkPos.y-launchPos.y);
-        chkDist = sqrt(pow(diffX, 2)+pow(diffY, 2));
+        diffX = fabs(chkPos.s0-launchPos.s0);
+        diffY = fabs(chkPos.s1-launchPos.s1);
+        chkDist = half_sqrt(diffX*diffX+diffY*diffY);
         if (chkDist < minDist || chkDist > maxDist) {
             //Set the no run flag
             demArr[gid].s5 = 0.0f;
+            //printf("%f, %f, %f\n", chkDist, minDist, maxDist);
         }
         
     }
@@ -180,128 +180,127 @@ __kernel void shotOpt(__global float* thetaArr, __global float* distArr, float4 
     //Check for run flag
     if (laPos.s5 == 1.0f){
     
-        __private float4 outPos;
+        float4 outPos;
         outPos.s0 = 0.0f,
         outPos.s1 = 0.0f,
         outPos.s2 = 0.0f,
         outPos.s3 = 0.0f;
-        __private float4 inPos;
+         float4 inPos;
         inPos.s0 = 0.0f,
         inPos.s1 = 0.0f,
         inPos.s2 = 0.0f,
         inPos.s3 = 0.0f;
-        __private float4 initPos;
+         float4 initPos;
         initPos.s0 = 0.0f,
         initPos.s1 = 0.0f,
         initPos.s2 = 0.0f,
         initPos.s3 = 0.0f;
-        __private float4 outVel;
+         float4 outVel;
         outVel.s0 = 0.0f,
         outVel.s1 = 0.0f,
         outVel.s2 = 0.0f,
         outVel.s3 = 0.0f;
-        __private float4 inVel;
+         float4 inVel;
         inVel.s0 = 0.0f,
         inVel.s1 = 0.0f,
         inVel.s2 = 0.0f,
         inVel.s3 = 0.0f;
-        __private float4 initVel;
+         float4 initVel;
         initVel.s0 = 0.0f,
         initVel.s1 = 0.0f,
         initVel.s2 = 0.0f,
         initVel.s3 = 0.0f;
-        __private float4 outAcc;
+         float4 outAcc;
         outAcc.s0 = 0.0f,
         outAcc.s1 = 0.0f,
         outAcc.s2 = 0.0f,
         outAcc.s3 = 0.0f;
-        __private float4 inAcc;
+         float4 inAcc;
         inAcc.s0 = 0.0f,
         inAcc.s1 = 0.0f,
         inAcc.s2 = 0.0f,
         inAcc.s3 = 0.0f;
-        __private float4 initAcc;
+         float4 initAcc;
         initAcc.s0 = 0.0f,
         initAcc.s1 = 0.0f,
         initAcc.s2 = 0.0f,
         initAcc.s3 = 0.0f;
-        __private float4 vel1, vel2, vel3, vel4;
-        __private float4 pos1, pos2, pos3, pos4;
-        __private float4 acc1, acc2, acc3, acc4;
-        __private float4 tayVel;
+         float4 vel1, vel2, vel3, vel4;
+         float4 pos1, pos2, pos3, pos4;
+         float4 acc1, acc2, acc3, acc4;
+         float4 tayVel;
         tayVel.s0 = 0.0f,
         tayVel.s1 = 0.0f,
         tayVel.s2 = 0.0f,
         tayVel.s3 = 0.0f;
-        __private float4 tayPos;
+         float4 tayPos;
         tayPos.s0 = 0.0f,
         tayPos.s1 = 0.0f,
         tayPos.s2 = 0.0f,
         tayPos.s3 = 0.0f;
         
-        __private float timeStep = d_timeStep;
-        __private float mortSigma;
-        __private float mortMass = 3.2f;
-        __private float muzVel = 225.1f;
-        __private float calibre = 0.081;
-        __private float area;
-        __private float dragCoef = 0.15;
-        __private float pi = 3.14159265359;
+         float timeStep = d_timeStep;
+         float mortSigma;
+         float mortMass = 3.2f;
+         float muzVel = 225.1f;
+         float calibre = 0.081f;
+         float area;
+         float dragCoef = 0.15f;
+         float pi = 3.14159265359f;
         //Calc Mortsigma
-        area = pi*(pow((0.5*calibre), 2));
+        area = pi*(pow((0.5f*calibre), 2));
         //Sigma
-        mortSigma = dragCoef*area*0.5;
+        mortSigma = dragCoef*area*0.5f;
         
         //Get Theta from GID
-        __private float el = thetaArr[gid];
-        __private float elRad;
+         float el = thetaArr[gid];
+         float elRad;
         //Convert to radians
-        elRad = ((90.0-el)*0.01745329252);
+        elRad = ((90.0f-el)*0.01745329252f);
         
         //Calc Az
-        __private float dX = tgtPos.x-laPos.x;
-        __private float dY = tgtPos.y-laPos.y;
-        __private float az = atan2(dY, dX);
+         float dX = tgtPos.s0-laPos.s0;
+         float dY = tgtPos.s1-laPos.s1;
+         float az = atan2(dY, dX);
         if (az < 0.0f) {
             az+=(2.0f*pi);
         }
         
         //Forces
-        __private float combVel = 0.0f;
-        __private float netForce = 0.0f;
-        __private float dragForce = 0.0f;
+         float combVel = 0.0f;
+         float dragForce = 0.0f;
         //Normalised Velocity
-        __private float4 normVel;
+         float4 normVel;
         normVel.s0 = 0.0f;
         normVel.s1 = 0.0f;
         normVel.s2 = 0.0f;
         normVel.s3 = 0.0f;
         
         //Drag Components
-        __private float4 drag;
+         float4 drag;
         drag.s0 = 0.0f;
         drag.s1 = 0.0f;
         drag.s2 = 0.0f;
         drag.s3 = 0.0f;
         
         //Distance Utils
-        __private float diffX, diffY, dist;
+         float diffX, diffY, dist;
         
         //Initialise Velocity
-        initVel.x = muzVel * sin(elRad) * cos(az);
-        initVel.y = muzVel * sin(elRad) * sin(az);
-        initVel.z = muzVel * cos(elRad);
+        initVel.s0 = muzVel * sin(elRad) * cos(az);
+        initVel.s1 = muzVel * sin(elRad) * sin(az);
+        initVel.s2 = muzVel * cos(elRad);
         
         //Setup the launch Position
         //inPos is used in the loop as currPos
         //Specifying here to convert from float8 to float4
-        inPos.x = laPos.x;
-        inPos.y = laPos.y;
-        inPos.z = laPos.z;
+        inPos.s0 = laPos.s0;
+        inPos.s1 = laPos.s1;
+        inPos.s2 = laPos.s2;
         inVel = initVel;
         
         __private int cnt = 0;
-        while (inPos.z > -1.0f){
+        while (inPos.s2 > -1.0f){
             cnt++;
             //Eval 1
             
@@ -311,15 +310,15 @@ __kernel void shotOpt(__global float* thetaArr, __global float* distArr, float4 
             pos1 = inPos + (vel1 * 0.0f) + ((inAcc * 0.0f)*0.5f);
             
             //Drag and accels
-            combVel = sqrt(pow(vel1.x, 2)+pow(vel1.y, 2)+pow(vel1.z, 2));
-            //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
-            dragForce = mortSigma*1.225f*powr(combVel, 2);
+            combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            dragForce = mortSigma*1.225f*pow(combVel, 2);
             //Normalise vector
             normVel = vel1 / combVel;
             //Drag Components
             drag = (normVel * dragForce)*-1.0f;
             //Add Gravity force
-            drag.z+=((mortMass*9.801f)*-1.0f);
+            drag.s2+=((mortMass*9.801f)*-1.0f);
             //Acceleration components
             acc1 = drag/mortMass;
 
@@ -330,15 +329,15 @@ __kernel void shotOpt(__global float* thetaArr, __global float* distArr, float4 
             pos2 = pos1 + (vel2 * (timeStep*0.5f)) + ((acc1 * pow((timeStep*0.5f), 2))*0.5f);
 
             //Drag and accels
-            combVel = sqrt(pow(vel1.x, 2)+pow(vel1.y, 2)+pow(vel1.z, 2));
-            //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
+            combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
             dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
             //Normalise vector
             normVel = vel2 / combVel;
             //Drag Components
             drag = (normVel * dragForce)*-1.0f;
             //Add Gravity force
-            drag.z+=((mortMass*9.801f)*-1.0f);
+            drag.s2+=((mortMass*9.801f)*-1.0f);
             //Acceleration components
             acc2 = drag/mortMass;
 
@@ -349,15 +348,15 @@ __kernel void shotOpt(__global float* thetaArr, __global float* distArr, float4 
             pos3 = pos2 + (vel3 * (timeStep*0.5f)) + ((acc2 * pow((timeStep*0.5f), 2))*0.5f);
             
             //Drag and accels
-            combVel = sqrt(pow(vel3.x, 2)+pow(vel3.y, 2)+pow(vel3.z, 2));
-            //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
+            combVel = sqrt(pow(vel3.s0, 2)+pow(vel3.s1, 2)+pow(vel3.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
             dragForce = mortSigma*1.225f*powr(combVel, 2);
             //Normalise vector
             normVel = vel3 / combVel;
             //Drag Components
             drag = (normVel * dragForce)*-1.0f;
             //Add Gravity force
-            drag.z+=((mortMass*9.801f)*-1.0f);
+            drag.s2+=((mortMass*9.801f)*-1.0f);
             //Acceleration components
             acc3 = drag/mortMass;
 
@@ -368,15 +367,15 @@ __kernel void shotOpt(__global float* thetaArr, __global float* distArr, float4 
             pos4 = pos3 + (vel4 * timeStep) + ((acc3 * pow(timeStep, 2))*0.5f);
             
             //Drag and accels
-            combVel = sqrt(pow(vel4.x, 2)+pow(vel4.y, 2)+pow(vel4.z, 2));
-            //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
+            combVel = sqrt(pow(vel4.s0, 2)+pow(vel4.s1, 2)+pow(vel4.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
             dragForce = mortSigma*1.225f*pow(combVel, 2);
             //Normalise vector
             normVel = vel4 / combVel;
             //Drag Components
             drag = (normVel * dragForce)*-1.0f;
             //Add Gravity force
-            drag.z+=((mortMass*9.801f)*-1.0f);
+            drag.s2+=((mortMass*9.801f)*-1.0f);
             //Acceleration components
             acc4 = drag/mortMass;
             
@@ -391,245 +390,917 @@ __kernel void shotOpt(__global float* thetaArr, __global float* distArr, float4 
         
         }
         //Calculate the distance to tgt
-        diffX = fabs(inPos.x-tgtPos.x);
-        diffY = fabs(inPos.y-tgtPos.y);
-        dist = sqrt(powr(diffX, 2)+powr(diffY, 2));
+        diffX = fabs(inPos.s0-tgtPos.s0);
+        diffY = fabs(inPos.s1-tgtPos.s1);
+        dist = sqrt(pow(diffX, 2)+pow(diffY, 2));
         distArr[gid] = dist;
-        //printf("%f, %f, %f, %i\n", inPos.x, inPos.y, inPos.z, cnt);
+        //printf("%f, %f, %f, %i\n", inPos.s0, inPos.s1, inPos.s2, cnt);
     } else {
         //no run flag found
     }
 }
 
 
-__kernel void shotISect(__global float* thetaArr, __global float* distArr, float4 tgtPos, float8 laPos, float d_timeStep)
+
+
+__kernel void shotOptThetaFast(__global float* thetaArr, __global float* distArr, float4 tgtPos, float8 laPos, float d_timeStep)
 {
-    //Shot Kernel for intersection (parrellelised based on DEM)
+    //Shot Kernel for Optimisation / Brute Forcing the theta shots (parrellelised based on all theta possibilities)
     
     int gid = get_global_id (0);
     
-    __private float4 outPos;
-    outPos.s0 = 0.0f,
-    outPos.s1 = 0.0f,
-    outPos.s2 = 0.0f,
-    outPos.s3 = 0.0f;
-    __private float4 inPos;
-    inPos.s0 = 0.0f,
-    inPos.s1 = 0.0f,
-    inPos.s2 = 0.0f,
-    inPos.s3 = 0.0f;
-    __private float4 initPos;
-    initPos.s0 = 0.0f,
-    initPos.s1 = 0.0f,
-    initPos.s2 = 0.0f,
-    initPos.s3 = 0.0f;
-    __private float4 outVel;
-    outVel.s0 = 0.0f,
-    outVel.s1 = 0.0f,
-    outVel.s2 = 0.0f,
-    outVel.s3 = 0.0f;
-    __private float4 inVel;
-    inVel.s0 = 0.0f,
-    inVel.s1 = 0.0f,
-    inVel.s2 = 0.0f,
-    inVel.s3 = 0.0f;
-    __private float4 initVel;
-    initVel.s0 = 0.0f,
-    initVel.s1 = 0.0f,
-    initVel.s2 = 0.0f,
-    initVel.s3 = 0.0f;
-    __private float4 outAcc;
-    outAcc.s0 = 0.0f,
-    outAcc.s1 = 0.0f,
-    outAcc.s2 = 0.0f,
-    outAcc.s3 = 0.0f;
-    __private float4 inAcc;
-    inAcc.s0 = 0.0f,
-    inAcc.s1 = 0.0f,
-    inAcc.s2 = 0.0f,
-    inAcc.s3 = 0.0f;
-    __private float4 initAcc;
-    initAcc.s0 = 0.0f,
-    initAcc.s1 = 0.0f,
-    initAcc.s2 = 0.0f,
-    initAcc.s3 = 0.0f;
-    __private float4 vel1, vel2, vel3, vel4;
-    __private float4 pos1, pos2, pos3, pos4;
-    __private float4 acc1, acc2, acc3, acc4;
-    __private float4 tayVel;
-    tayVel.s0 = 0.0f,
-    tayVel.s1 = 0.0f,
-    tayVel.s2 = 0.0f,
-    tayVel.s3 = 0.0f;
-    __private float4 tayPos;
-    tayPos.s0 = 0.0f,
-    tayPos.s1 = 0.0f,
-    tayPos.s2 = 0.0f,
-    tayPos.s3 = 0.0f;
-    
-    __private float timeStep = d_timeStep;
-    __private float mortSigma;
-    __private float mortMass = 3.2f;
-    __private float muzVel = 225.1f;
-    __private float calibre = 0.081;
-    __private float area;
-    __private float dragCoef = 0.15;
-    __private float pi = 3.14159265359;
-    //Calc Mortsigma
-    area = pi*(pow((0.5*calibre), 2));
-    //Sigma
-    mortSigma = dragCoef*area*0.5;
-    
-    //Get Theta from GID
-    __private float el = thetaArr[gid];
-    __private float elRad;
-    //Convert to radians
-    elRad = ((90.0-el)*0.01745329252);
-    
-    //Calc Az
-    __private float dX = tgtPos.x-laPos.x;
-    __private float dY = tgtPos.y-laPos.y;
-    __private float az = atan2(dY, dX);
-    if (az < 0.0f) {
-        az+=(2.0f*pi);
-    }
-    
-    //Forces
-    __private float combVel = 0.0f;
-    __private float netForce = 0.0f;
-    __private float dragForce = 0.0f;
-    //Normalised Velocity
-    __private float4 normVel;
-    normVel.s0 = 0.0f;
-    normVel.s1 = 0.0f;
-    normVel.s2 = 0.0f;
-    normVel.s3 = 0.0f;
-    
-    //Drag Components
-    __private float4 drag;
-    drag.s0 = 0.0f;
-    drag.s1 = 0.0f;
-    drag.s2 = 0.0f;
-    drag.s3 = 0.0f;
-    
-    //Distance Utils
-    __private float diffX, diffY, dist;
-    
-    //Initialise Velocity
-    initVel.x = muzVel * sin(elRad) * cos(az);
-    initVel.y = muzVel * sin(elRad) * sin(az);
-    initVel.z = muzVel * cos(elRad);
-    
-    //Setup the launch Position
-    //inPos is used in the loop as currPos
-    inPos.x = laPos.x;
-    inPos.y = laPos.y;
-    inPos.z = laPos.z;
-    inVel = initVel;
-    
-    __private int cnt = 0;
-    while (inPos.z > -1.0f){
-        cnt++;
-        //Eval 1
+    //Check for run flag - now thinned before
+    //if (laPos.s5 == 1.0f){
         
-        //Euler Velocity
-        vel1 = inVel + (inAcc * 0.0f);
-        //Euler Position
-        pos1 = inPos + (vel1 * 0.0f) + ((inAcc * 0.0f)*0.5f);
+        __private float4 inAcc;
+        __private float timeStep = d_timeStep;
+        __private float mortSigma;
+        __private float mortMass = 3.2f;
+        __private float muzVel = 225.1f;
+        __private float calibre = 0.081f;
+        __private float area;
+        __private float dragCoef = 0.15f;
+        __private float pi = 3.14159265359f;
+        //Calc Mortsigma
+        area = pi*(pow((0.5f*calibre), 2));
+        //Sigma
+        mortSigma = dragCoef*area*0.5f;
         
-        //Drag and accels
-        combVel = sqrt(pow(vel1.x, 2)+pow(vel1.y, 2)+pow(vel1.z, 2));
-        //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
-        dragForce = mortSigma*1.225f*powr(combVel, 2);
-        //Normalise vector
-        normVel = vel1 / combVel;
-        //Drag Components
-        drag = (normVel * dragForce)*-1.0f;
-        //Add Gravity force
-        drag.z+=((mortMass*9.801f)*-1.0f);
-        //Acceleration components
-        acc1 = drag/mortMass;
+        //Get Theta from GID
+        __private float elRad;
+        //Convert to radians
+        elRad = ((90.0f-laPos.s3)*0.01745329252f);
         
-        //Eval 2
-        //Euler Velocity
-        vel2 = vel1 + (acc1 * (timeStep*0.5f));
-        //Euler Position
-        pos2 = pos1 + (vel2 * (timeStep*0.5f)) + ((acc1 * pow((timeStep*0.5f), 2))*0.5f);
+        //Calc Az
+        __private float dX = tgtPos.s0-laPos.s0;
+        __private float dY = tgtPos.s1-laPos.s1;
+        __private float az = atan2(dY, dX);
+        if (az < 0.0f) {
+            az+=(2.0f*pi);
+        }
         
-        //Drag and accels
-        combVel = sqrt(pow(vel1.x, 2)+pow(vel1.y, 2)+pow(vel1.z, 2));
-        //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
-        dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
-        //Normalise vector
-        normVel = vel2 / combVel;
-        //Drag Components
-        drag = (normVel * dragForce)*-1.0f;
-        //Add Gravity force
-        drag.z+=((mortMass*9.801f)*-1.0f);
-        //Acceleration components
-        acc2 = drag/mortMass;
+        //Initialise Velocity
+        __private float4 initVel;
+        initVel.s0 = muzVel * sin(elRad) * cos(az);
+        initVel.s1 = muzVel * sin(elRad) * sin(az);
+        initVel.s2 = muzVel * cos(elRad);
         
-        //Eval 3
-        //Euler Velocity
-        vel3 = vel2 + (acc2 * (timeStep*0.5f));
-        //Euler Position
-        pos3 = pos2 + (vel3 * (timeStep*0.5f)) + ((acc2 * pow((timeStep*0.5f), 2))*0.5f);
+        //Setup the launch Position
+        //inPos is used in the loop as currPos
+        //Specifying here to convert from float8 to float4
+        __private float4 inPos;
+        inPos.s0 = laPos.s0;
+        inPos.s1 = laPos.s1;
+        inPos.s2 = laPos.s2;
+        __private float4 inVel;
+        inVel = initVel;
         
-        //Drag and accels
-        combVel = sqrt(pow(vel3.x, 2)+pow(vel3.y, 2)+pow(vel3.z, 2));
-        //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
-        dragForce = mortSigma*1.225f*powr(combVel, 2);
-        //Normalise vector
-        normVel = vel3 / combVel;
-        //Drag Components
-        drag = (normVel * dragForce)*-1.0f;
-        //Add Gravity force
-        drag.z+=((mortMass*9.801f)*-1.0f);
-        //Acceleration components
-        acc3 = drag/mortMass;
+        __private int cnt = 0;
+        while (inPos.s2 > -1.0f){
+            cnt++;
+            float4 vel1, vel2, vel3, vel4;
+            float4 pos1, pos2, pos3, pos4;
+            float4 acc1, acc2, acc3, acc4;
+            float4 tayVel;
+            float4 tayPos;
+            //Forces
+            float combVel = 0.0f;
+            float dragForce = 0.0f;
+            //Normalised Velocity
+            float4 normVel;
+            //Drag Components
+            float4 drag;
+            
+            //Eval 1
+            
+            //Euler Velocity
+            vel1 = inVel + (inAcc * 0.0f);
+            //Euler Position
+            pos1 = inPos + (vel1 * 0.0f) + ((inAcc * 0.0f)*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+            combVel = half_sqrt(vel1.s0*vel1.s0+vel1.s1*vel1.s1+vel1.s2*vel1.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel1 / combVel;
+            //normVel = vel1 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc1 = drag/mortMass;
+            
+            //Eval 2
+            //Euler Velocity
+            vel2 = vel1 + (acc1 * (timeStep*0.5f));
+            //Euler Position
+            pos2 = pos1 + (vel2 * (timeStep*0.5f)) + ((acc1 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel2.s0, 2)+pow(vel2.s1, 2)+pow(vel2.s2, 2));
+            combVel = half_sqrt(vel2.s0*vel2.s0+vel2.s1*vel2.s1+vel2.s2*vel2.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel2 / combVel;
+            //normVel = vel2 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc2 = drag/mortMass;
+            
+            //Eval 3
+            //Euler Velocity
+            vel3 = vel2 + (acc2 * (timeStep*0.5f));
+            //Euler Position
+            pos3 = pos2 + (vel3 * (timeStep*0.5f)) + ((acc2 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel3.s0, 2)+pow(vel3.s1, 2)+pow(vel3.s2, 2));
+            combVel = half_sqrt(vel3.s0*vel3.s0+vel3.s1*vel3.s1+vel3.s2*vel3.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*powr(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel3 / combVel;
+            //normVel = vel3 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc3 = drag/mortMass;
+            
+            //Eval 4
+            //Euler Velocity
+            vel4 = vel3 + (acc3 * timeStep);
+            //Euler Position
+            pos4 = pos3 + (vel4 * timeStep) + ((acc3 * pow(timeStep, 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel4.s0, 2)+pow(vel4.s1, 2)+pow(vel4.s2, 2));
+            combVel = half_sqrt(vel4.s0*vel4.s0+vel4.s1*vel4.s1+vel4.s2*vel4.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel4 / combVel;
+            //normVel = vel4 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc4 = drag/mortMass;
+            
+            //Taylor Expansion
+            //tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (1.0f/6.0f);
+            //inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (1.0f/6.0f);
+            //tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (1.0f/6.0f);
+            tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (0.166666f);
+            inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (0.166666f);
+            tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (0.166666f);
+            
+            //Swap ready for next iteration
+            inPos = inPos + (tayVel * timeStep);
+            inVel = inVel + (inAcc * timeStep);
         
-        //Eval 4
-        //Euler Velocity
-        vel4 = vel3 + (acc3 * timeStep);
-        //Euler Position
-        pos4 = pos3 + (vel4 * timeStep) + ((acc3 * pow(timeStep, 2))*0.5f);
-        
-        //Drag and accels
-        combVel = sqrt(pow(vel4.x, 2)+pow(vel4.y, 2)+pow(vel4.z, 2));
-        //motionUtils::drag(netForce, combVel, mortSigma, outPos.z);
-        dragForce = mortSigma*1.225f*pow(combVel, 2);
-        //Normalise vector
-        normVel = vel4 / combVel;
-        //Drag Components
-        drag = (normVel * dragForce)*-1.0f;
-        //Add Gravity force
-        drag.z+=((mortMass*9.801f)*-1.0f);
-        //Acceleration components
-        acc4 = drag/mortMass;
-        
-        //Taylor Expansion
-        tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (1.0f/6.0f);
-        inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (1.0f/6.0f);
-        tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (1.0f/6.0f);
-        
-        //Swap ready for next iteration
-        inPos = inPos + (tayVel * timeStep);
-        inVel = inVel + (inAcc * timeStep);
-        
-    }
-    //Calculate the distance to tgt
-    diffX = fabs(inPos.x-tgtPos.x);
-    diffY = fabs(inPos.y-tgtPos.y);
-    dist = sqrt(powr(diffX, 2)+powr(diffY, 2));
-    distArr[gid] = dist;
-    //printf("%f, %f, %f, %i\n", inPos.x, inPos.y, inPos.z, cnt);
-    
+            
+        }
+        //printf("%f, %f, %f\n", inPos.s0, inPos.s1, inPos.s2);
+        //Calculate the distance to tgt
+        float diffX, diffY, dist;
+        diffX = fabs(inPos.s0-tgtPos.s0);
+        diffY = fabs(inPos.s1-tgtPos.s1);
+        dist = half_sqrt(diffX*diffX+diffY*diffY);
+        distArr[gid] = dist;
+        //printf("%i, %f\n", cnt, dist);
 }
 
 
 
+__kernel void shotOptDem(__global float8* demArr, float4 laPos, float d_timeStep)
+{
+    //Shot Kernel for Optimisation / Brute Forcing the theta shots (parrellelised based on all DEM possibilities)
+    
+    int gid = get_global_id (0);
+    float8 tgtPos = demArr[gid];
+    
+    //Check for run flag
+    if (tgtPos.s5 == 1.0f){
+        
+        float4 outPos;
+        outPos.s0 = 0.0f,
+        outPos.s1 = 0.0f,
+        outPos.s2 = 0.0f,
+        outPos.s3 = 0.0f;
+        float4 inPos;
+        inPos.s0 = 0.0f,
+        inPos.s1 = 0.0f,
+        inPos.s2 = 0.0f,
+        inPos.s3 = 0.0f;
+        float4 initPos;
+        initPos.s0 = 0.0f,
+        initPos.s1 = 0.0f,
+        initPos.s2 = 0.0f,
+        initPos.s3 = 0.0f;
+        float4 outVel;
+        outVel.s0 = 0.0f,
+        outVel.s1 = 0.0f,
+        outVel.s2 = 0.0f,
+        outVel.s3 = 0.0f;
+        float4 inVel;
+        inVel.s0 = 0.0f,
+        inVel.s1 = 0.0f,
+        inVel.s2 = 0.0f,
+        inVel.s3 = 0.0f;
+        float4 initVel;
+        initVel.s0 = 0.0f,
+        initVel.s1 = 0.0f,
+        initVel.s2 = 0.0f,
+        initVel.s3 = 0.0f;
+        float4 outAcc;
+        outAcc.s0 = 0.0f,
+        outAcc.s1 = 0.0f,
+        outAcc.s2 = 0.0f,
+        outAcc.s3 = 0.0f;
+        float4 inAcc;
+        inAcc.s0 = 0.0f,
+        inAcc.s1 = 0.0f,
+        inAcc.s2 = 0.0f,
+        inAcc.s3 = 0.0f;
+        float4 initAcc;
+        initAcc.s0 = 0.0f,
+        initAcc.s1 = 0.0f,
+        initAcc.s2 = 0.0f,
+        initAcc.s3 = 0.0f;
+        float4 vel1, vel2, vel3, vel4;
+        float4 pos1, pos2, pos3, pos4;
+        float4 acc1, acc2, acc3, acc4;
+        float4 tayVel;
+        tayVel.s0 = 0.0f,
+        tayVel.s1 = 0.0f,
+        tayVel.s2 = 0.0f,
+        tayVel.s3 = 0.0f;
+        float4 tayPos;
+        tayPos.s0 = 0.0f,
+        tayPos.s1 = 0.0f,
+        tayPos.s2 = 0.0f,
+        tayPos.s3 = 0.0f;
+        
+        float timeStep = d_timeStep;
+        float mortSigma;
+        float mortMass = 3.2f;
+        float muzVel = 225.1f;
+        float calibre = 0.081f;
+        float area;
+        float dragCoef = 0.15f;
+        float pi = 3.14159265359f;
+        //Calc Mortsigma
+        area = pi*(pow((0.5f*calibre), 2));
+        //Sigma
+        mortSigma = dragCoef*area*0.5f;
+        
+        //Get Theta from GID
+        float elRad;
+        //Convert to radians
+        elRad = ((90.0f-laPos.s3)*0.01745329252f);
+        
+        //Calc Az
+        float dX = tgtPos.s0-laPos.s0;
+        float dY = tgtPos.s1-laPos.s1;
+        float az = atan2(dY, dX);
+        if (az < 0.0f) {
+            az+=(2.0f*pi);
+        }
+        
+        //Forces
+        float combVel = 0.0f;
+        float dragForce = 0.0f;
+        //Normalised Velocity
+        float4 normVel;
+        normVel.s0 = 0.0f;
+        normVel.s1 = 0.0f;
+        normVel.s2 = 0.0f;
+        normVel.s3 = 0.0f;
+        
+        //Drag Components
+        float4 drag;
+        drag.s0 = 0.0f;
+        drag.s1 = 0.0f;
+        drag.s2 = 0.0f;
+        drag.s3 = 0.0f;
+        
+        //Distance Utils
+        float diffX, diffY, dist;
+        
+        //Initialise Velocity
+        initVel.s0 = muzVel * sin(elRad) * cos(az);
+        initVel.s1 = muzVel * sin(elRad) * sin(az);
+        initVel.s2 = muzVel * cos(elRad);
+        
+        //Setup the launch Position
+        //inPos is used in the loop as currPos
+        //Specifying here to convert from float8 to float4
+        inPos.s0 = laPos.s0;
+        inPos.s1 = laPos.s1;
+        inPos.s2 = laPos.s2;
+        inVel = initVel;
+        
+        __private int cnt = 0;
+        while (inPos.s2 > -1.0f){
+            cnt++;
+            //Eval 1
+            
+            //Euler Velocity
+            vel1 = inVel + (inAcc * 0.0f);
+            //Euler Position
+            pos1 = inPos + (vel1 * 0.0f) + ((inAcc * 0.0f)*0.5f);
+            
+            //Drag and accels
+            combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            dragForce = mortSigma*1.225f*pow(combVel, 2);
+            //Normalise vector
+            normVel = vel1 / combVel;
+            //Drag Components
+            drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            drag.s2+=((mortMass*9.801f)*-1.0f);
+            //Acceleration components
+            acc1 = drag/mortMass;
+            
+            //Eval 2
+            //Euler Velocity
+            vel2 = vel1 + (acc1 * (timeStep*0.5f));
+            //Euler Position
+            pos2 = pos1 + (vel2 * (timeStep*0.5f)) + ((acc1 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
+            //Normalise vector
+            normVel = vel2 / combVel;
+            //Drag Components
+            drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            drag.s2+=((mortMass*9.801f)*-1.0f);
+            //Acceleration components
+            acc2 = drag/mortMass;
+            
+            //Eval 3
+            //Euler Velocity
+            vel3 = vel2 + (acc2 * (timeStep*0.5f));
+            //Euler Position
+            pos3 = pos2 + (vel3 * (timeStep*0.5f)) + ((acc2 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            combVel = sqrt(pow(vel3.s0, 2)+pow(vel3.s1, 2)+pow(vel3.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            dragForce = mortSigma*1.225f*powr(combVel, 2);
+            //Normalise vector
+            normVel = vel3 / combVel;
+            //Drag Components
+            drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            drag.s2+=((mortMass*9.801f)*-1.0f);
+            //Acceleration components
+            acc3 = drag/mortMass;
+            
+            //Eval 4
+            //Euler Velocity
+            vel4 = vel3 + (acc3 * timeStep);
+            //Euler Position
+            pos4 = pos3 + (vel4 * timeStep) + ((acc3 * pow(timeStep, 2))*0.5f);
+            
+            //Drag and accels
+            combVel = sqrt(pow(vel4.s0, 2)+pow(vel4.s1, 2)+pow(vel4.s2, 2));
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            dragForce = mortSigma*1.225f*pow(combVel, 2);
+            //Normalise vector
+            normVel = vel4 / combVel;
+            //Drag Components
+            drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            drag.s2+=((mortMass*9.801f)*-1.0f);
+            //Acceleration components
+            acc4 = drag/mortMass;
+            
+            //Taylor Expansion
+            tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (1.0f/6.0f);
+            inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (1.0f/6.0f);
+            tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (1.0f/6.0f);
+            
+            //Swap ready for next iteration
+            inPos = inPos + (tayVel * timeStep);
+            inVel = inVel + (inAcc * timeStep);
+            
+        }
+        //Calculate the distance to tgt
+        diffX = fabs(inPos.s0-tgtPos.s0);
+        diffY = fabs(inPos.s1-tgtPos.s1);
+        dist = sqrt(pow(diffX, 2)+pow(diffY, 2));
+        //Write to DEMSP
+        tgtPos.s4 = dist;
+        demArr[gid] = tgtPos;
+        //printf("%f, %f, %f, %i\n", inPos.s0, inPos.s1, inPos.s2, cnt);
+    }
+}
 
 
+
+__kernel void shotOptDemFast(__global float8* demArr, float4 laPos, float d_timeStep)
+{
+    //Shot Kernel for Optimisation / Brute Forcing the theta shots (parrellelised based on all DEM possibilities)
+    
+    int gid = get_global_id (0);
+    float8 tgtPos = demArr[gid];
+    
+    //Check for run flag
+    if (tgtPos.s5 == 1.0f){
+        
+        __private float4 inAcc;
+        __private float timeStep = d_timeStep;
+        __private float mortSigma;
+        __private float mortMass = 3.2f;
+        __private float muzVel = 225.1f;
+        __private float calibre = 0.081f;
+        __private float area;
+        __private float dragCoef = 0.15f;
+        __private float pi = 3.14159265359f;
+        //Calc Mortsigma
+        area = pi*(pow((0.5f*calibre), 2));
+        //Sigma
+        mortSigma = dragCoef*area*0.5f;
+        
+        //Get Theta from GID
+        __private float elRad;
+        //Convert to radians
+        elRad = ((90.0f-laPos.s3)*0.01745329252f);
+        
+        //Calc Az
+        __private float dX = tgtPos.s0-laPos.s0;
+        __private float dY = tgtPos.s1-laPos.s1;
+        __private float az = atan2(dY, dX);
+        if (az < 0.0f) {
+            az+=(2.0f*pi);
+        }
+        
+        //Initialise Velocity
+        __private float4 initVel;
+        initVel.s0 = muzVel * sin(elRad) * cos(az);
+        initVel.s1 = muzVel * sin(elRad) * sin(az);
+        initVel.s2 = muzVel * cos(elRad);
+        
+        //Setup the launch Position
+        //inPos is used in the loop as currPos
+        //Specifying here to convert from float8 to float4
+        __private float4 inPos;
+        inPos.s0 = laPos.s0;
+        inPos.s1 = laPos.s1;
+        inPos.s2 = laPos.s2;
+        __private float4 inVel;
+        inVel = initVel;
+        
+        __private int cnt = 0;
+        while (inPos.s2 > -1.0f){
+            cnt++;
+            float4 vel1, vel2, vel3, vel4;
+            float4 pos1, pos2, pos3, pos4;
+            float4 acc1, acc2, acc3, acc4;
+            float4 tayVel;
+            float4 tayPos;
+            //Forces
+            float combVel = 0.0f;
+            float dragForce = 0.0f;
+            //Normalised Velocity
+            float4 normVel;
+            //Drag Components
+            float4 drag;
+            
+            //Eval 1
+            
+            //Euler Velocity
+            vel1 = inVel + (inAcc * 0.0f);
+            //Euler Position
+            pos1 = inPos + (vel1 * 0.0f) + ((inAcc * 0.0f)*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+            combVel = half_sqrt(vel1.s0*vel1.s0+vel1.s1*vel1.s1+vel1.s2*vel1.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel1 / combVel;
+            //normVel = vel1 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc1 = drag/mortMass;
+            
+            //Eval 2
+            //Euler Velocity
+            vel2 = vel1 + (acc1 * (timeStep*0.5f));
+            //Euler Position
+            pos2 = pos1 + (vel2 * (timeStep*0.5f)) + ((acc1 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel2.s0, 2)+pow(vel2.s1, 2)+pow(vel2.s2, 2));
+            combVel = half_sqrt(vel2.s0*vel2.s0+vel2.s1*vel2.s1+vel2.s2*vel2.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel2 / combVel;
+            //normVel = vel2 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc2 = drag/mortMass;
+            
+            //Eval 3
+            //Euler Velocity
+            vel3 = vel2 + (acc2 * (timeStep*0.5f));
+            //Euler Position
+            pos3 = pos2 + (vel3 * (timeStep*0.5f)) + ((acc2 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel3.s0, 2)+pow(vel3.s1, 2)+pow(vel3.s2, 2));
+            combVel = half_sqrt(vel3.s0*vel3.s0+vel3.s1*vel3.s1+vel3.s2*vel3.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*powr(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel3 / combVel;
+            //normVel = vel3 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc3 = drag/mortMass;
+            
+            //Eval 4
+            //Euler Velocity
+            vel4 = vel3 + (acc3 * timeStep);
+            //Euler Position
+            pos4 = pos3 + (vel4 * timeStep) + ((acc3 * pow(timeStep, 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel4.s0, 2)+pow(vel4.s1, 2)+pow(vel4.s2, 2));
+            combVel = half_sqrt(vel4.s0*vel4.s0+vel4.s1*vel4.s1+vel4.s2*vel4.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel4 / combVel;
+            //normVel = vel4 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc4 = drag/mortMass;
+            
+            //Taylor Expansion
+            //tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (1.0f/6.0f);
+            //inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (1.0f/6.0f);
+            //tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (1.0f/6.0f);
+            tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (0.166666f);
+            inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (0.166666f);
+            tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (0.166666f);
+            
+            //Swap ready for next iteration
+            inPos = inPos + (tayVel * timeStep);
+            inVel = inVel + (inAcc * timeStep);
+            
+        }
+        //Distance Utils
+        float diffX, diffY, dist;
+        //Calculate the distance to tgt
+        diffX = fabs(inPos.s0-tgtPos.s0);
+        diffY = fabs(inPos.s1-tgtPos.s1);
+        dist = half_sqrt(diffX*diffX+diffY*diffY);
+        //dist = sqrt(pow(diffX, 2)+pow(diffY, 2));
+        //Write to DEMSP
+        tgtPos.s4 = dist;
+        demArr[gid] = tgtPos;
+        //printf("%f, %f, %f, %i\n", inPos.s0, inPos.s1, inPos.s2, cnt);
+    }
+}
+
+
+
+__kernel void demIntersectFast(__global float8* demArr, float4 laPos, float d_timeStep,
+                               __global float* demZArr, float8 geoTrans, float2 cl_rasterSize)
+
+{
+    //Intersect - parallelize based on DEM, check intersect during integrator loop
+    //Runs once we've found the optimal theta
+    //Breaks at any stage if DEM z > posZ
+    
+    int gid = get_global_id (0);
+    float8 tgtPos = demArr[gid];
+    
+    //Check for run flag
+    if (tgtPos.s5 == 1.0f){
+        
+        __private float4 inAcc;
+        __private float timeStep = d_timeStep;
+        __private float mortSigma;
+        __private float mortMass = 3.2f;
+        __private float muzVel = 225.1f;
+        __private float calibre = 0.081f;
+        __private float area;
+        __private float dragCoef = 0.15f;
+        __private float pi = 3.14159265359f;
+        //Calc Mortsigma
+        area = pi*(pow((0.5f*calibre), 2));
+        //Sigma
+        mortSigma = dragCoef*area*0.5f;
+        
+        //Get Theta from GID
+        __private float elRad;
+        //Convert to radians
+        elRad = ((90.0f-tgtPos.s3)*0.01745329252f);
+        
+        //Calc Az
+        __private float dX = tgtPos.s0-laPos.s0;
+        __private float dY = tgtPos.s1-laPos.s1;
+        __private float az = atan2(dY, dX);
+        if (az < 0.0f) {
+            az+=(2.0f*pi);
+        }
+        
+        //Initialise Velocity
+        __private float4 initVel;
+        initVel.s0 = muzVel * sin(elRad) * cos(az);
+        initVel.s1 = muzVel * sin(elRad) * sin(az);
+        initVel.s2 = muzVel * cos(elRad);
+        
+        //Setup the launch Position
+        //inPos is used in the loop as currPos
+        //Specifying here to convert from float8 to float4
+        __private float4 inPos;
+        inPos.s0 = laPos.s0;
+        inPos.s1 = laPos.s1;
+        inPos.s2 = laPos.s2;
+        __private float4 inVel;
+        inVel = initVel;
+        
+        __private int cnt = 0;
+        while (inPos.s2 > -1.0f){
+            cnt++;
+            float4 vel1, vel2, vel3, vel4;
+            float4 pos1, pos2, pos3, pos4;
+            float4 acc1, acc2, acc3, acc4;
+            float4 tayVel;
+            float4 tayPos;
+            //Forces
+            float combVel = 0.0f;
+            float dragForce = 0.0f;
+            //Normalised Velocity
+            float4 normVel;
+            //Drag Components
+            float4 drag;
+            
+            //Eval 1
+            
+            //Euler Velocity
+            vel1 = inVel + (inAcc * 0.0f);
+            //Euler Position
+            pos1 = inPos + (vel1 * 0.0f) + ((inAcc * 0.0f)*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+            combVel = half_sqrt(vel1.s0*vel1.s0+vel1.s1*vel1.s1+vel1.s2*vel1.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel1 / combVel;
+            //normVel = vel1 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc1 = drag/mortMass;
+            
+            //Eval 2
+            //Euler Velocity
+            vel2 = vel1 + (acc1 * (timeStep*0.5f));
+            //Euler Position
+            pos2 = pos1 + (vel2 * (timeStep*0.5f)) + ((acc1 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel2.s0, 2)+pow(vel2.s1, 2)+pow(vel2.s2, 2));
+            combVel = half_sqrt(vel2.s0*vel2.s0+vel2.s1*vel2.s1+vel2.s2*vel2.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel2 / combVel;
+            //normVel = vel2 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc2 = drag/mortMass;
+            
+            //Eval 3
+            //Euler Velocity
+            vel3 = vel2 + (acc2 * (timeStep*0.5f));
+            //Euler Position
+            pos3 = pos2 + (vel3 * (timeStep*0.5f)) + ((acc2 * pow((timeStep*0.5f), 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel3.s0, 2)+pow(vel3.s1, 2)+pow(vel3.s2, 2));
+            combVel = half_sqrt(vel3.s0*vel3.s0+vel3.s1*vel3.s1+vel3.s2*vel3.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*powr(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel3 / combVel;
+            //normVel = vel3 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc3 = drag/mortMass;
+            
+            //Eval 4
+            //Euler Velocity
+            vel4 = vel3 + (acc3 * timeStep);
+            //Euler Position
+            pos4 = pos3 + (vel4 * timeStep) + ((acc3 * pow(timeStep, 2))*0.5f);
+            
+            //Drag and accels
+            //combVel = sqrt(pow(vel4.s0, 2)+pow(vel4.s1, 2)+pow(vel4.s2, 2));
+            combVel = half_sqrt(vel4.s0*vel4.s0+vel4.s1*vel4.s1+vel4.s2*vel4.s2);
+            //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+            //dragForce = mortSigma*1.225f*pow(combVel, 2);
+            dragForce = mortSigma*1.225f*(combVel*combVel);
+            //Normalise vector
+            normVel = vel4 / combVel;
+            //normVel = vel4 * combVel;
+            //Drag Components
+            //drag = (normVel * dragForce)*-1.0f;
+            //Add Gravity force
+            //drag.s2+=((mortMass*9.801f)*-1.0f);
+            drag = -normVel * dragForce;
+            //Add Gravity force
+            drag.s2-=mortMass*9.801f;
+            //Acceleration components
+            acc4 = drag/mortMass;
+            
+            //Taylor Expansion
+            //tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (1.0f/6.0f);
+            //inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (1.0f/6.0f);
+            //tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (1.0f/6.0f);
+            tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (0.166666f);
+            inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (0.166666f);
+            tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (0.166666f);
+            
+            //Swap ready for next iteration
+            inPos = inPos + (tayVel * timeStep);
+            inVel = inVel + (inAcc * timeStep);
+            
+            //Check for terrain Intersection
+            __private float diffX, diffY, pxX, pxY;
+            diffX = inPos.s0-geoTrans.s0;
+            diffY = inPos.s1-geoTrans.s3;
+            pxX = fabs(diffX/geoTrans.s1);
+            pxY = fabs(diffY/geoTrans.s5);
+            __private int zIdx;
+            zIdx = convert_int((pxY*cl_rasterSize.s0)+pxX);
+            //printf("%i\n", zIdx);
+            //printf("%f, %f\n", demZArr[zIdx], inPos.s2);
+            if (demZArr[zIdx] > inPos.s2) {
+                tgtPos.s6 = 1.0f;
+            } else {
+                tgtPos.s6 = 0.0f;
+            }
+            
+        }
+        //Write to DEMSP
+        //printf("%f\n", tgtPos.s6);
+        demArr[gid] = tgtPos;
+        //printf("%f, %f, %f, %i\n", inPos.s0, inPos.s1, inPos.s2, cnt);
+        
+    } //No Run flag
+    
+}
+
+
+//
+//__kernel void optimise(__global float8* demArr, __global float4* optimArr, float4 laPos)
+//
+//    { //Optimise func based on dot product
+//      //DEM Arr - contains previous theta and distance from landing pt to tgt
+//      //Optim arr contains float4(seedJump, )
+//        
+//        int gid = get_global_id (0);
+//        //Get the DEM
+//        
+//        __private float vec1x, vec1y, vec2x, vec2y, out, dotP, el, seedJump, tmp, tmp2, pxX, pxY;
+//        __private float launchX, launchY;
+//        __private float2 v1, v2;
+//        
+//        if (tgtPos.s5 == 1.0f){
+//            //Work out pixel location and launch from 1d index
+//            v1 = (vec1x, vec1y);
+//            v2 = (vec2x, vec2y);
+//            //opencl dot - this is the new value - old is in arr
+//            dotP = dot(v1, v2);
+//            //Check and Move
+//            if (dotP < 0.0f) {
+//                if (dotPArr[gid] < 0.0f) {
+//                    //Too far and prev was too far (negative dot prod between the vectors)
+//                    //Increase elevation, no change in seed
+//                    el = optElArr[gid]+seedJumpArr[gid];
+//                }
+//                if (dotPArr[gid] > 0.0f) {
+//                    //Too far and prev too close:
+//                    //alter seedjump and increase el
+//                    seedJump=seedJumpArr[gid]/4.0f;
+//                    el = optElArr[gid]+seedJump;
+//                }
+//            }
+//            else if (dotP > 0.0f) {
+//                if (dotPArr[gid] > 0.0f) {
+//                    //Too close and prev too close
+//                    //decrease elevation, no change seed
+//                    el = optElArr[gid]-seedJumpArr[gid];
+//                }
+//                if (dotPArr[gid] < 0.0f) {
+//                    //Too close and prev too far
+//                    //Change seed, decrease el
+//                    seedJump = seedJumpArr[gid]/4.0f;
+//                    el = optElArr[gid]-seedJump;
+//                }
+//            }
+//            //Set Vals
+//            seedJumpArr[gid]=seedJump;
+//            optElArr[gid] = el;
+//        }
+//    }
+//
+
+
+
+//
+//
+//
+//
 //__kernel void test2d(__global float2* demArr)
 //{ //Just sets up the optEl array
 //    int gid = get_global_id(0);
@@ -655,8 +1326,8 @@ __kernel void shotISect(__global float* thetaArr, __global float* distArr, float
 //        int gid = get_global_id (0);
 //        __private float dist, diffX, diffY;
 //        __private int proc;
-//        diffX = fabs(tgtX-missPosArr[gid].x);
-//        diffY = fabs(tgtY-missPosArr[gid].y);
+//        diffX = fabs(tgtX-missPosArr[gid].s0);
+//        diffY = fabs(tgtY-missPosArr[gid].s1);
 //        dist = sqrt(powr(diffX, 2)+powr(diffY, 2));
 //    }
 //
@@ -696,8 +1367,8 @@ __kernel void shotISect(__global float* thetaArr, __global float* distArr, float
 //            //Do Dot Prod
 //            vec1x = launchX - tgtX;
 //            vec1y = launchY - tgtY;
-//            vec2x = missPosArr[gid].x - tgtX;
-//            vec2y = missPosArr[gid].y - tgtY;
+//            vec2x = missPosArr[gid].s0 - tgtX;
+//            vec2y = missPosArr[gid].s1 - tgtY;
 //            v1 = (vec1x, vec1y);
 //            v2 = (vec2x, vec2y);
 //            //opencl dot - this is the new value - old is in arr
@@ -754,46 +1425,46 @@ __kernel void shotISect(__global float* thetaArr, __global float* distArr, float
 //    //Total Time
 //    totTime+=timeStep;
 //    //Move Position
-//    currPos.x = prevPos.x + ((vel.x * timeStep) + (0.5f*acc.x*(powr(timeStep, 2))));
-//    currPos.y = prevPos.y + ((vel.y * timeStep) + (0.5f*acc.y*(powr(timeStep, 2))));
-//    currPos.z = prevPos.z + ((vel.z * timeStep) + (0.5f*acc.z*(powr(timeStep, 2))));
+//    currPos.s0 = prevPos.s0 + ((vel.s0 * timeStep) + (0.5f*acc.s0*(powr(timeStep, 2))));
+//    currPos.s1 = prevPos.s1 + ((vel.s1 * timeStep) + (0.5f*acc.s1*(powr(timeStep, 2))));
+//    currPos.s2 = prevPos.s2 + ((vel.s2 * timeStep) + (0.5f*acc.s2*(powr(timeStep, 2))));
 //    //Check if its passed zenith
 //    if (floorMove == false) {
-//        if (prevPos.z > currPos.z) {
-//            floorZ = ptgtPos.z;
+//        if (prevPos.s2 > currPos.s2) {
+//            floorZ = ptgtPos.s2;
 //            floorMove = true;
 //            //Record zenith
-//            launchPos.s7 = currPos.z;
+//            launchPos.s7 = currPos.s2;
 //            //printf("%f, %f, %f, %f, %f, %i, %f, %f\n", launchZ, floorZ, tgtZ, currPosZ, combV, lpCnt, prevPosZ, t);
 //        }
 //    }
 //    lpCnt+=1;
 //    //Drag Forces
 //    //Combined xyz velocity
-//    combV = sqrt(powr(vel.x, 2)+powr(vel.y, 2)+powr(vel.z, 2));
+//    combV = sqrt(powr(vel.s0, 2)+powr(vel.s1, 2)+powr(vel.s2, 2));
 //    //Drag Force xyz
 //    dragForce = mortSigma*powr(combV, 2);
 //    if (combV > 0.0f){
 //        dragForce*=-1.0f;
 //    }
 //    //This actually gives the combined drag - not a velocity but reusing the class
-//    force.x = dragForce * sin(elRad) * cos(az);
-//    force.y = dragForce * sin(elRad) * sin(az);
-//    force.z = dragForce * cos(elRad);
+//    force.s0 = dragForce * sin(elRad) * cos(az);
+//    force.s1 = dragForce * sin(elRad) * sin(az);
+//    force.s2 = dragForce * cos(elRad);
 //    //Gravity Force
-//    force.z-=gForce;
+//    force.s2-=gForce;
 //    //Verlet Integration - TODO REMOVE THIS
-//    avgAcc.x = 0.5*((force.x/mortMass)+acc.x);
-//    avgAcc.y = 0.5*((force.y/mortMass)+acc.y);
-//    avgAcc.z = 0.5*((force.z/mortMass)+acc.z);
+//    avgAcc.s0 = 0.5*((force.s0/mortMass)+acc.s0);
+//    avgAcc.s1 = 0.5*((force.s1/mortMass)+acc.s1);
+//    avgAcc.s2 = 0.5*((force.s2/mortMass)+acc.s2);
 //    //Alter Velocity - TODO USE FMA HERE
-//    vel.x+=avgAcc.x*timeStep;
-//    vel.y+=avgAcc.y*timeStep;
-//    vel.z+=avgAcc.z*timeStep;
+//    vel.s0+=avgAcc.s0*timeStep;
+//    vel.s1+=avgAcc.s1*timeStep;
+//    vel.s2+=avgAcc.s2*timeStep;
 //    //Reset Vertlet
-//    acc.x = avgAcc.x;
-//    acc.y = avgAcc.y;
-//    acc.z = avgAcc.z;
+//    acc.s0 = avgAcc.s0;
+//    acc.s1 = avgAcc.s1;
+//    acc.s2 = avgAcc.s2;
 //
 //    
 //}
@@ -834,7 +1505,7 @@ __kernel void shotISect(__global float* thetaArr, __global float* distArr, float
 //    zenFail = false;
 //    //Get float8 from input
 //    //float8(x, y ,z ,optEl, dotp, prevdot, dist, SPARE)
-//    //pos.x, pos.y, pos.z
+//    //pos.s0, pos.s1, pos.s2
 //    //pos.s3 - optel
 //    //pos.s4 - dotp
 //    //pos.s5 - prevDot
@@ -845,13 +1516,13 @@ __kernel void shotISect(__global float* thetaArr, __global float* distArr, float
 //    ptgtPos = tgtPos;
 //
 //    //Adding obs height to launch Z and tgtZ
-//    launchPos.z+=20.0f;
-//    ptgtPos.z+=20.0f;
+//    launchPos.s2+=20.0f;
+//    ptgtPos.s2+=20.0f;
 //    timeStep = 0.01f;
 //    pi = 3.1415926f;
 //    //Calc Az
-//    diffX = fabs(ptgtPos.x-launchPos.x);
-//    diffY = fabs(ptgtPos.y-launchPos.y);
+//    diffX = fabs(ptgtPos.s0-launchPos.s0);
+//    diffY = fabs(ptgtPos.s1-launchPos.s1);
 //    az = atan2(diffY, diffX);
 //    if (az < 0.0f) {
 //        az+=(2.0f*pi);
@@ -859,73 +1530,73 @@ __kernel void shotISect(__global float* thetaArr, __global float* distArr, float
 //    //Deg2rad
 //    elRad = (90.0f-launchPos.s3) * (pi/180.0f);
 //    //Vel components
-//    vel.x = muzVel * sin(elRad) * cos(az);
-//    vel.y = muzVel * sin(elRad) * sin(az);
-//    vel.z = muzVel * cos(elRad);
+//    vel.s0 = muzVel * sin(elRad) * cos(az);
+//    vel.s1 = muzVel * sin(elRad) * sin(az);
+//    vel.s2 = muzVel * cos(elRad);
 //    //Acc Components
-//    acc.x = 0.0f;
-//    acc.y = 0.0f;
-//    acc.z = 0.0f;
+//    acc.s0 = 0.0f;
+//    acc.s1 = 0.0f;
+//    acc.s2 = 0.0f;
 //    //Setup Floor
 //    floorZ = -99999.0f;
 //    //Reset Forces
 //    force = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
 //    dragForce=0.0f;
 //    //Setup currpos
-//    currPos.x = launchPos.x;
-//    currPos.y = launchPos.y;
-//    currPos.z = launchPos.z;
+//    currPos.s0 = launchPos.s0;
+//    currPos.s1 = launchPos.s1;
+//    currPos.s2 = launchPos.s2;
 //    //Run Shot
-//    while (currPos.z > floorZ) { //While not below floor
+//    while (currPos.s2 > floorZ) { //While not below floor
 //        //Record Previous Position
 //        prevPos = currPos;
 //        //Total Time
 //        t+=timeStep;
 //        //Move Position
-//        currPos.x = prevPos.x + ((vel.x * timeStep) + (0.5f*acc.x*(powr(timeStep, 2))));
-//        currPos.y = prevPos.y + ((vel.y * timeStep) + (0.5f*acc.y*(powr(timeStep, 2))));
-//        currPos.z = prevPos.z + ((vel.z * timeStep) + (0.5f*acc.z*(powr(timeStep, 2))));
+//        currPos.s0 = prevPos.s0 + ((vel.s0 * timeStep) + (0.5f*acc.s0*(powr(timeStep, 2))));
+//        currPos.s1 = prevPos.s1 + ((vel.s1 * timeStep) + (0.5f*acc.s1*(powr(timeStep, 2))));
+//        currPos.s2 = prevPos.s2 + ((vel.s2 * timeStep) + (0.5f*acc.s2*(powr(timeStep, 2))));
 //        //Check if its passed zenith
 //        if (floorMove == false) {
-//            if (prevPos.z > currPos.z) {
-//                floorZ = ptgtPos.z;
+//            if (prevPos.s2 > currPos.s2) {
+//                floorZ = ptgtPos.s2;
 //                floorMove = true;
 //                //Record zenith
-//                launchPos.s7 = currPos.z;
+//                launchPos.s7 = currPos.s2;
 //                //printf("%f, %f, %f, %f, %f, %i, %f, %f\n", launchZ, floorZ, tgtZ, currPosZ, combV, lpCnt, prevPosZ, t);
 //            }
 //        }
 //        lpCnt+=1;
 //        //Drag Forces
 //        //Combined xyz velocity
-//        combV = sqrt(powr(vel.x, 2)+powr(vel.y, 2)+powr(vel.z, 2));
+//        combV = sqrt(powr(vel.s0, 2)+powr(vel.s1, 2)+powr(vel.s2, 2));
 //        //Drag Force xyz
 //        dragForce = mortSigma*powr(combV, 2);
 //        if (combV > 0.0f){
 //            dragForce*=-1.0f;
 //        }
 //        //This actually gives the combined drag - not a velocity but reusing the class
-//        force.x = dragForce * sin(elRad) * cos(az);
-//        force.y = dragForce * sin(elRad) * sin(az);
-//        force.z = dragForce * cos(elRad);
+//        force.s0 = dragForce * sin(elRad) * cos(az);
+//        force.s1 = dragForce * sin(elRad) * sin(az);
+//        force.s2 = dragForce * cos(elRad);
 //        //Gravity Force
-//        force.z-=gForce;
+//        force.s2-=gForce;
 //        //Verlet Integration - TODO REMOVE THIS
-//        avgAcc.x = 0.5*((force.x/mortMass)+acc.x);
-//        avgAcc.y = 0.5*((force.y/mortMass)+acc.y);
-//        avgAcc.z = 0.5*((force.z/mortMass)+acc.z);
+//        avgAcc.s0 = 0.5*((force.s0/mortMass)+acc.s0);
+//        avgAcc.s1 = 0.5*((force.s1/mortMass)+acc.s1);
+//        avgAcc.s2 = 0.5*((force.s2/mortMass)+acc.s2);
 //        //Alter Velocity - TODO USE FMA HERE
-//        vel.x+=avgAcc.x*timeStep;
-//        vel.y+=avgAcc.y*timeStep;
-//        vel.z+=avgAcc.z*timeStep;
+//        vel.s0+=avgAcc.s0*timeStep;
+//        vel.s1+=avgAcc.s1*timeStep;
+//        vel.s2+=avgAcc.s2*timeStep;
 //        //Reset Vertlet
-//        acc.x = avgAcc.x;
-//        acc.y = avgAcc.y;
-//        acc.z = avgAcc.z;
+//        acc.s0 = avgAcc.s0;
+//        acc.s1 = avgAcc.s1;
+//        acc.s2 = avgAcc.s2;
 //    } //End while not below floor loop
 //    //Record Miss point in 2float
 //    //Record
-//    missPosArr[gid] = (float2)(currPos.x, currPos.y);
+//    missPosArr[gid] = (float2)(currPos.s0, currPos.s1);
 //}
 //
 //

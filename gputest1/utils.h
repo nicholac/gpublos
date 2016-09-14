@@ -10,7 +10,7 @@
 #define __gputest1__utils__
 
 #include <stdio.h>
-#include <position.h>
+#include "position.h"
 #include <vector>
 #include <memory>
 #include "gdal_priv.h"
@@ -26,24 +26,24 @@
 class Utils {
 public:
     
-    static std::vector<std::shared_ptr<position>> mkLoS(const std::vector<std::shared_ptr<position>>& worldProf, const double barrelZ, const double tgtZ);
-    
-    static double getLinLen(const std::vector<std::shared_ptr<position>>& inTrj);
-    
-    static std::vector<std::shared_ptr<position>> buildProfile(const std::shared_ptr <std::vector<std::vector<double>>>& demData,
-                                                               const std::vector<std::shared_ptr<position>>& inTrj,
-                                                               const double geoTransform[6], const double& rasterXSize,
-                                                               const double& rasterYSize);
-    
-    static void getzVal (std::shared_ptr<position>& inPos, const double geoTransform[6],
-                         const std::shared_ptr <std::vector<std::vector<double>>>& demData,
-                         const double& rasterXSize, const double& rasterYSize);
-    
-    static std::vector<std::shared_ptr<position>> buildLaunchVec(const double geoTransform[6],
-                                                                 const int& rasterSizeX,
-                                                                 const int& rasterSizeY,
-                                                                 const std::shared_ptr <std::vector<std::vector<double>>>& demData);
-    
+//    static std::vector<std::shared_ptr<position>> mkLoS(const std::vector<std::shared_ptr<position>>& worldProf, const double barrelZ, const double tgtZ);
+//    
+//    static double getLinLen(const std::vector<std::shared_ptr<position>>& inTrj);
+//    
+//    static std::vector<std::shared_ptr<position>> buildProfile(const std::shared_ptr <std::vector<std::vector<double>>>& demData,
+//                                                               const std::vector<std::shared_ptr<position>>& inTrj,
+//                                                               const double geoTransform[6], const double& rasterXSize,
+//                                                               const double& rasterYSize);
+//    
+//    static void getzVal (std::shared_ptr<position>& inPos, const double geoTransform[6],
+//                         const std::shared_ptr <std::vector<std::vector<double>>>& demData,
+//                         const double& rasterXSize, const double& rasterYSize);
+//    
+//    static std::vector<std::shared_ptr<position>> buildLaunchVec(const double geoTransform[6],
+//                                                                 const int& rasterSizeX,
+//                                                                 const int& rasterSizeY,
+//                                                                 const std::shared_ptr <std::vector<std::vector<double>>>& demData);
+
     
     static std::vector<float> GDAL2VEC (GDALDataset *poDataset);
     
