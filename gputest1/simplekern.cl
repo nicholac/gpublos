@@ -127,7 +127,7 @@ __kernel void rangeChk(__global float8* demArr, float4 chkPos, float minDist, fl
         int gid = get_global_id (0);
 
         //Work out the geo coords for this location
-        __private float diffX, diffY, chkDist, chkDist2, chkDist3;
+        __private float diffX, diffY, chkDist;
         __private float8 launchPos;
         launchPos = demArr[gid];
         //Check Ranges
@@ -829,9 +829,10 @@ __kernel void shotOptDem(__global float8* demArr, float4 laPos, float d_timeStep
 
 
 
-__kernel void shotOptDemFast(__global float8* demArr, float4 laPos, float d_timeStep)
+__kernel void shotOptDemFast(__global float8* demArr, float4 laPos, float d_timeStep, __global float4* optimArr)
 {
-    //Shot Kernel for Optimisation / Brute Forcing the theta shots (parrellelised based on all DEM possibilities)
+    //Shot Kernel for Optimisation half
+    
     
     int gid = get_global_id (0);
     float8 tgtPos = demArr[gid];
@@ -1022,7 +1023,13 @@ __kernel void shotOptDemFast(__global float8* demArr, float4 laPos, float d_time
         //Write to DEMSP
         tgtPos.s4 = dist;
         demArr[gid] = tgtPos;
-        //printf("%f, %f, %f, %i\n", inPos.s0, inPos.s1, inPos.s2, cnt);
+        //Set miss position into Optimisation arr
+        __private float4 optData;
+        optData = optimArr[gid];
+        optData.s0 = inPos.s0;
+        optData.s1 = inPos.s1;
+        optimArr[gid] = optData;
+        //printf("%f, %f, %f, %f\n", inPos.s0, inPos.s1, inPos.s2, dist);
     }
 }
 
@@ -1241,59 +1248,412 @@ __kernel void demIntersectFast(__global float8* demArr, float4 laPos, float d_ti
 }
 
 
-//
-//__kernel void optimise(__global float8* demArr, __global float4* optimArr, float4 laPos)
-//
-//    { //Optimise func based on dot product
+
+__kernel void optimise(__global float8* demArr, __global float4* optimArr, float4 laPos)
+
+    { //Optimise func based on dot product
+    }
 //      //DEM Arr - contains previous theta and distance from landing pt to tgt
-//      //Optim arr contains float4(seedJump, )
+//      //Optim arr contains float4(missPosX, missPosY, seedJump, prevDotP)
+//      //Run flag
 //        
 //        int gid = get_global_id (0);
-//        //Get the DEM
+//        //Get the DEM Pos
 //        
 //        __private float vec1x, vec1y, vec2x, vec2y, out, dotP, el, seedJump, tmp, tmp2, pxX, pxY;
 //        __private float launchX, launchY;
 //        __private float2 v1, v2;
+//        __private float4 optData;
+//        __private float8 demPos;
 //        
-//        if (tgtPos.s5 == 1.0f){
-//            //Work out pixel location and launch from 1d index
-//            v1 = (vec1x, vec1y);
-//            v2 = (vec2x, vec2y);
-//            //opencl dot - this is the new value - old is in arr
-//            dotP = dot(v1, v2);
-//            //Check and Move
-//            if (dotP < 0.0f) {
-//                if (dotPArr[gid] < 0.0f) {
-//                    //Too far and prev was too far (negative dot prod between the vectors)
-//                    //Increase elevation, no change in seed
-//                    el = optElArr[gid]+seedJumpArr[gid];
+//        demPos = demArr[gid];
+//        if (demPos.s5 == 1.0f){
+//            //If the elev is 85.0 its the first shot - alter by seed and continue
+//            optData = optimArr[gid];
+//            if (demPos.s3 == 85.0f){
+//                demPos.s3-=optData.s2;
+//                //Do dot P for this position
+//                vec1x = laPos.s0 - demPos.s0;
+//                vec1y = laPos.s1 - demPos.s1;
+//                vec2x = optData.s0 - demPos.s0;
+//                vec2y = optData.s1 - demPos.s1;
+//                v1 = (vec1x, vec1y);
+//                v2 = (vec2x, vec2y);
+//                dotP = dot(v1, v2);
+//            } else {
+//                //Work out DotP between launchPos --> TgtPos and missPos --> tgtPos
+//                vec1x = laPos.s0 - demPos.s0;
+//                vec1y = laPos.s1 - demPos.s1;
+//                vec2x = optData.s0 - demPos.s0;
+//                vec2y = optData.s1 - demPos.s1;
+//                v1 = (vec1x, vec1y);
+//                v2 = (vec2x, vec2y);
+//                dotP = dot(v1, v2);
+//                //printf("%f, %f, %f, %f, %f, %f, %f\n", vec1x, vec1y, vec2x, vec2y, laPos.s0, optData.s3, dotP);
+//                //Check and Move
+//                if (dotP < 0.0f) {
+//                    if (optData.s3 < 0.0f) {
+//                        //Too far and prev was too far (negative dot prod between the vectors)
+//                        //Increase elevation, no change in seed
+//                        //el = optElArr[gid]+seedJumpArr[gid];
+//                        demPos.s3 = demPos.s3+optData.s2;
+//                    }
+//                    if (optData.s3 > 0.0f) {
+//                        //Too far and prev too close:
+//                        //alter seedjump and increase el
+//                        optData.s2=optData.s2/4.0f;
+//                        demPos.s3+=optData.s2;
+//                    }
 //                }
-//                if (dotPArr[gid] > 0.0f) {
-//                    //Too far and prev too close:
-//                    //alter seedjump and increase el
-//                    seedJump=seedJumpArr[gid]/4.0f;
-//                    el = optElArr[gid]+seedJump;
-//                }
-//            }
-//            else if (dotP > 0.0f) {
-//                if (dotPArr[gid] > 0.0f) {
-//                    //Too close and prev too close
-//                    //decrease elevation, no change seed
-//                    el = optElArr[gid]-seedJumpArr[gid];
-//                }
-//                if (dotPArr[gid] < 0.0f) {
-//                    //Too close and prev too far
-//                    //Change seed, decrease el
-//                    seedJump = seedJumpArr[gid]/4.0f;
-//                    el = optElArr[gid]-seedJump;
+//                else if (dotP > 0.0f) {
+//                    if (optData.s3 > 0.0f) {
+//                        //Too close and prev too close
+//                        //decrease elevation, no change seed
+//                        //el = optElArr[gid]-seedJumpArr[gid];
+//                        demPos.s3 = demPos.s3-optData.s2;
+//                    }
+//                    if (optData.s3 < 0.0f) {
+//                        //Too close and prev too far
+//                        //Change seed, decrease el
+//                        optData.s2=optData.s2/4.0f;
+//                        demPos.s3-=optData.s2;
+//                    }
 //                }
 //            }
 //            //Set Vals
-//            seedJumpArr[gid]=seedJump;
-//            optElArr[gid] = el;
+//            optData.s3 = dotP;
+//            optimArr[gid]=optData;
+//            demArr[gid] = demPos;
 //        }
 //    }
-//
+
+
+__kernel void optEasy(__global float8* demArr, __global float8* optimArr, float4 laPos,
+                      float d_timeStep, float distThreshold, float elevThreshold, float elevMin, float elevMax)
+
+{
+    //Shot Kernel for Optimisation without dot product stuff
+    //Run three integrations
+    //Get closest theta
+    //
+    
+    
+    int gid = get_global_id (0);
+    __private float8 tgtPos = demArr[gid];
+    __private float8 optData = optimArr[gid];
+    
+    //Check for run flag
+    if (tgtPos.s5 == 1.0f){
+        
+        __private float4 inAcc;
+        __private float timeStep = d_timeStep;
+        __private float mortSigma;
+        __private float mortMass = 3.2f;
+        __private float muzVel = 192.1f;
+        __private float calibre = 0.081f;
+        __private float area;
+        __private float dragCoef = 0.15f;
+        __private float pi = 3.14159265359f;
+        //Calc Mortsigma
+        area = pi*(pow((0.5f*calibre), 2));
+        //Sigma
+        mortSigma = dragCoef*area*0.5f;
+        
+        //Calc Az
+        __private float dX = tgtPos.s0-laPos.s0;
+        __private float dY = tgtPos.s1-laPos.s1;
+        __private float az = atan2(dY, dX);
+        if (az < 0.0f) {
+            az+=(2.0f*pi);
+        }
+        
+        
+        //Run while success / fail flag not set
+        while (optData.s6 < 1.0f){
+            optData.s7+=1.0;
+            for (int i=2; i<5; i++){
+                
+                //Setup the launch Position
+                //inPos is used in the loop as currPos
+                //Specifying here to convert from float8 to float4
+                __private float4 inPos;
+                inPos.s0 = laPos.s0;
+                inPos.s1 = laPos.s1;
+                inPos.s2 = 0.0f;
+                tgtPos.s2 = 0.0f;
+            
+                //Get Theta from elevs
+                __private float elRad;
+                //Convert to radians
+                elRad = ((90.0f-optData[i])*(pi/180.0f));
+                
+                //Initialise Velocity
+                __private float4 initVel;
+                initVel.s0 = muzVel * sin(elRad) * cos(az);
+                initVel.s1 = muzVel * sin(elRad) * sin(az);
+                initVel.s2 = muzVel * cos(elRad);
+                
+                __private float4 inVel;
+                inVel = initVel;
+                
+                __private float floorZ = -1.0f;
+                __private bool floorMove = 0;
+                
+                    //Run integration for this elev
+                __private int cnt = 0;
+                while (inPos.s2 > floorZ){
+                    cnt++;
+                    float4 vel1, vel2, vel3, vel4;
+                    float4 pos1, pos2, pos3, pos4;
+                    float4 acc1, acc2, acc3, acc4;
+                    float4 tayVel;
+                    float4 tayPos;
+                    //Forces
+                    float combVel = 0.0f;
+                    float dragForce = 0.0f;
+                    //Normalised Velocity
+                    float4 normVel;
+                    //Drag Components
+                    float4 drag;
+                    
+                    //Eval 1
+                    
+                    //Euler Velocity
+                    vel1 = inVel + (inAcc * 0.0f);
+                    //Euler Position
+                    pos1 = inPos + (vel1 * 0.0f) + ((inAcc * 0.0f)*0.5f);
+                    
+                    //Drag and accels
+                    combVel = sqrt(pow(vel1.s0, 2)+pow(vel1.s1, 2)+pow(vel1.s2, 2));
+                    //combVel = half_sqrt(vel1.s0*vel1.s0+vel1.s1*vel1.s1+vel1.s2*vel1.s2);
+                    //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+                    dragForce = mortSigma*1.225f*pow(combVel, 2);
+                    //dragForce = mortSigma*1.225f*(combVel*combVel);
+                    //Normalise vector
+                    normVel = vel1 / combVel;
+                    //normVel = vel1 * combVel;
+                    //Drag Components
+                    drag = (normVel * dragForce)*-1.0f;
+                    //Add Gravity force
+                    drag.s2+=((mortMass*9.801f)*-1.0f);
+                    //drag = -normVel * dragForce;
+                    //Add Gravity force
+                    //drag.s2-=mortMass*9.801f;
+                    //Acceleration components
+                    acc1 = drag/mortMass;
+                    
+                    //Eval 2
+                    //Euler Velocity
+                    vel2 = vel1 + (acc1 * (timeStep*0.5f));
+                    //Euler Position
+                    pos2 = pos1 + (vel2 * (timeStep*0.5f)) + ((acc1 * pow((timeStep*0.5f), 2))*0.5f);
+                    
+                    //Drag and accels
+                    combVel = sqrt(pow(vel2.s0, 2)+pow(vel2.s1, 2)+pow(vel2.s2, 2));
+                    //combVel = half_sqrt(vel2.s0*vel2.s0+vel2.s1*vel2.s1+vel2.s2*vel2.s2);
+                    //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+                    dragForce = mortSigma*1.225f*pow(combVel, 2.0f);
+                    //dragForce = mortSigma*1.225f*(combVel*combVel);
+                    //Normalise vector
+                    normVel = vel2 / combVel;
+                    //normVel = vel2 * combVel;
+                    //Drag Components
+                    drag = (normVel * dragForce)*-1.0f;
+                    //Add Gravity force
+                    drag.s2+=((mortMass*9.801f)*-1.0f);
+                    //drag = -normVel * dragForce;
+                    //Add Gravity force
+                    //drag.s2-=mortMass*9.801f;
+                    //Acceleration components
+                    acc2 = drag/mortMass;
+                    
+                    //Eval 3
+                    //Euler Velocity
+                    vel3 = vel2 + (acc2 * (timeStep*0.5f));
+                    //Euler Position
+                    pos3 = pos2 + (vel3 * (timeStep*0.5f)) + ((acc2 * pow((timeStep*0.5f), 2))*0.5f);
+                    
+                    //Drag and accels
+                    combVel = sqrt(pow(vel3.s0, 2)+pow(vel3.s1, 2)+pow(vel3.s2, 2));
+                    //combVel = half_sqrt(vel3.s0*vel3.s0+vel3.s1*vel3.s1+vel3.s2*vel3.s2);
+                    //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+                    dragForce = mortSigma*1.225f*pow(combVel, 2);
+                    //dragForce = mortSigma*1.225f*(combVel*combVel);
+                    //Normalise vector
+                    normVel = vel3 / combVel;
+                    //normVel = vel3 * combVel;
+                    //Drag Components
+                    drag = (normVel * dragForce)*-1.0f;
+                    //Add Gravity force
+                    drag.s2+=((mortMass*9.801f)*-1.0f);
+                    //drag = -normVel * dragForce;
+                    //Add Gravity force
+                    //drag.s2-=mortMass*9.801f;
+                    //Acceleration components
+                    acc3 = drag/mortMass;
+                    
+                    //Eval 4
+                    //Euler Velocity
+                    vel4 = vel3 + (acc3 * timeStep);
+                    //Euler Position
+                    pos4 = pos3 + (vel4 * timeStep) + ((acc3 * pow(timeStep, 2))*0.5f);
+                    
+                    //Drag and accels
+                    combVel = sqrt(pow(vel4.s0, 2)+pow(vel4.s1, 2)+pow(vel4.s2, 2));
+                    //combVel = half_sqrt(vel4.s0*vel4.s0+vel4.s1*vel4.s1+vel4.s2*vel4.s2);
+                    //motionUtils::drag(netForce, combVel, mortSigma, outPos.s2);
+                    dragForce = mortSigma*1.225f*pow(combVel, 2);
+                    //dragForce = mortSigma*1.225f*(combVel*combVel);
+                    //Normalise vector
+                    normVel = vel4 / combVel;
+                    //normVel = vel4 * combVel;
+                    //Drag Components
+                    drag = (normVel * dragForce)*-1.0f;
+                    //Add Gravity force
+                    drag.s2+=((mortMass*9.801f)*-1.0f);
+                    //drag = -normVel * dragForce;
+                    //Add Gravity force
+                    //drag.s2-=mortMass*9.801f;
+                    //Acceleration components
+                    acc4 = drag/mortMass;
+                    
+                    //Taylor Expansion
+                    //tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (1.0f/6.0f);
+                    //inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (1.0f/6.0f);
+                    //tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (1.0f/6.0f);
+                    tayVel = (vel1+((vel2+vel3)*2.0f)+vel4) * (0.166666f);
+                    inAcc = (acc1+((acc2+acc3)*2.0f)+acc4) * (0.166666f);
+                    tayPos = (pos1+((pos2+pos3)*2.0f)+pos4) * (0.166666f);
+                    
+                    //Swap ready for next iteration
+                    //Save Z for zen chk
+                    __private float tstZ = inPos.s2;
+                    inPos = inPos + (tayVel * timeStep);
+                    inVel = inVel + (inAcc * timeStep);
+                    
+                    //Check zenith
+//                    if (tstZ > inPos.s2 && floorMove == 0) {
+//                        //Test if it passed tgt height
+//                        if (tstZ > tgtPos.s2) {
+//                            //Reached height - move floor
+//                            floorZ = tgtPos.s2;
+//                            floorMove = 1;
+//                        } else {
+//                            //Failed to reach zenith - set outPos as big so distance check for optimisation will fail
+//                            inPos.s0 = 0.0f;
+//                            inPos.s1 = 0.0f;
+//                            inPos.s2 = -9999999999.0f;
+//                            inPos.s3 = 0.0f;
+//                            break;
+//                        }
+//                    }
+                    
+                }
+                //Get Dist for this elev
+                float diffX, diffY, diffZ, dist;
+                //Calculate the distance to tgt
+                diffX = fabs(inPos.s0-tgtPos.s0);
+                diffY = fabs(inPos.s1-tgtPos.s1);
+                diffZ = fabs(inPos.s2-tgtPos.s2);
+                dist = half_sqrt((diffX*diffX)+(diffY*diffY)+(diffZ*diffZ));
+                //Store if closer
+                if (dist < optData.s1){
+                    optData.s1 = dist;
+                    optData.s0 = optData[i];
+                }
+                //Test distance the shot went
+                float diffX2, diffY2, diffZ2, dist2;
+                diffX2 = fabs(inPos.s0-laPos.s0);
+                diffY2 = fabs(inPos.s1-laPos.s1);
+                diffZ2 = fabs(inPos.s2-laPos.s2);
+                dist2 = half_sqrt((diffX2*diffX2)+(diffY2*diffY2));
+                //printf("Distance of shot: %f, %f, %f, %f\n", dist2, optData[i], inPos.s0, laPos.s0);
+                
+                
+            } //Elevs For
+            
+            //printf("%f, %f, %f, %f, %f\n", optData.s2, optData.s3, optData.s4, optData.s5, optData.s1);
+            //Make optimisation decisions
+            if (optData.s1 <= distThreshold) {
+                //Close enough - set success flag
+                optData.s6 = 1.0f;
+            }
+            if (optData.s0 == elevMin) {
+                if (optData.s5 > elevThreshold) {
+                    //Keep trying - special case for minElev
+                    optData.s5/=2.0f;
+                    //min
+                    optData.s2=elevMin;
+                    //max
+                    optData.s3=elevMin+optData.s5;
+                    //mid
+                    optData.s4=elevMin+(optData.s5/2.0f);
+                } else {
+                    //Seems min elev is closest, we havn't got within the correct distance - cant reach the tgt
+                    //(0.0 - running, 1.0 - success, 2.0 - failed)
+                    optData.s6 = 2.0f;
+                    //Set run flag in demarr aswell
+                    tgtPos.s5 = 0.0f;
+                }
+            } else if (optData.s0 == elevMax) {
+                if (optData.s5 > elevThreshold) {
+                    //Keep trying - special case for maxElev
+                    optData.s5/=2.0f;
+                    //min
+                    optData.s2=elevMax-optData.s5;
+                    //max
+                    optData.s3=elevMax;
+                    //mid
+                    optData.s4=elevMax-(optData.s5/2.0f);
+                } else {
+                    //Seems max elev is closest, we havn't got within the correct distance - cant reach the tgt
+                    //(0.0 - running, 1.0 - success, 2.0 - failed)
+                    optData.s6 = 2.0f;
+                    //Set run flag in demarr aswell
+                    tgtPos.s5 = 0.0f;
+                }
+            } else {
+                //Check if we've exceeded elev threshold
+                if (optData.s5< elevThreshold) {
+                    //Didnt reach dist and have exceeded elev threshold - break at current
+                    //(0.0 - running, 1.0 - success, 2.0 - failed)
+                    optData.s6 = 2.0f;
+                    //Set run flag in demarr aswell
+                    tgtPos.s5 = 0.0f;
+                } else {
+                    //Keep trying
+                    optData.s5/=2.0f;
+                    //min
+                    optData.s2=optData.s0-(optData.s5/2.0f);
+                    //Check Boundary
+                    if (optData.s2 < elevMin) {
+                        optData.s2 = elevMin;
+                    }
+                    //max
+                    optData.s3=optData.s0+(optData.s5/2.0f);
+                    if (optData.s3 > elevMax) {
+                        optData.s3 = elevMax;
+                    }
+                    //mid
+                    optData.s4=optData.s0;
+                }
+            }
+            
+        }// Outside dist threshold while
+        
+        //TODO: Some other stop conditions
+        //Write to DEMSP
+        //Theta
+        tgtPos.s3 = optData.s0;
+        //Dist
+        tgtPos.s4 = optData.s1;
+        demArr[gid] = tgtPos;
+        //Record in OptimArr for posterity
+        optimArr[gid] = optData;
+        printf("Done %i\n", gid);
+        //printf("%f, %f, %f, %f, %f, %f\n", optData.s0, optData.s1, optData.s6, optData.s2, optData.s3, optData.s4);
+    }
+}
 
 
 

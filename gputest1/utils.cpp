@@ -189,9 +189,9 @@ void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
             //Set no run flag on null data
             cl_float8 out;
             if (scanline[i] == -32767.000000) {
-                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 45.0, 999999.0f, 0.0f, 0.0f, 0.0f};
+                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 65.0, 999999.0f, 0.0f, 0.0f, 0.0f};
             } else {
-                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 45.0, 999999.0f, 1.0f, 0.0f, 0.0f};
+                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 65.0, 999999.0f, 1.0f, 0.0f, 0.0f};
             }
             
             worldZPtr[cnt]=(out);
