@@ -6,6 +6,7 @@
 //  Copyright (c) 2015 Chris Nicholas. All rights reserved.
 //
 
+#include <iomanip>
 #include "utils.h"
 #include "position.h"
 #include <vector>
@@ -150,6 +151,92 @@
 //    }
 //    return worldZPtr;
 //}
+
+int Utils::optimise(cl_float8* optimArr, int taskSize, float distThreshold, float elevThreshold, float elevMin, float elevMax) {
+    //Optimise outside the kernel - eeeek
+    int workLeft=0;
+    for (int i = 0; i < taskSize; i++)  {
+        //std::cout << std::setprecision(10) << "Dist: " << optimArr[i].s1 << " / theta: " << optimArr[i].s0 << " / runs: " << optimArr[i].s7 << std::endl;
+        if (optimArr[i].s6 < 1.0f){
+            workLeft++;
+            if (optimArr[i].s1 <= distThreshold) {
+                //Close enough - set success flag
+                optimArr[i].s6 = 1.0f;
+                //Increment the numer of shots - its three per optimisation check in kernel
+                optimArr[i].s7+=3.0f;
+            } else {
+                if (optimArr[i].s0 == elevMin) {
+                    if (optimArr[i].s5 > elevThreshold) {
+                        //Keep trying - special case for minElev
+                        optimArr[i].s5=optimArr[i].s5/2.0f;
+                        //min
+                        optimArr[i].s2=elevMin;
+                        //max
+                        optimArr[i].s3=elevMin+optimArr[i].s5;
+                        //mid
+                        optimArr[i].s4=elevMin+(optimArr[i].s5/2.0f);
+                    } else {
+                        //Seems min elev is closest, we havn't got within the correct distance - cant reach the tgt
+                        //(0.0 - running, 1.0 - success, 2.0 - failed)
+                        optimArr[i].s6 = 2.0f;
+                        //Increment the numer of shots - its three per optimisation check in kernel
+                        optimArr[i].s7+=3.0f;
+                        //tgtPos.s5 = 0.0f;
+                    }
+                } else if (optimArr[i].s0 == elevMax) {
+                    if (optimArr[i].s5 > elevThreshold) {
+                        //Keep trying - special case for maxElev
+                        optimArr[i].s5=optimArr[i].s5/2.0f;
+                        //min
+                        optimArr[i].s2=elevMax-optimArr[i].s5;
+                        //max
+                        optimArr[i].s3=elevMax;
+                        //mid
+                        optimArr[i].s4=elevMax-(optimArr[i].s5/2.0f);
+                    } else {
+                        //Seems max elev is closest, we havn't got within the correct distance - cant reach the tgt
+                        //(0.0 - running, 1.0 - success, 2.0 - failed)
+                        optimArr[i].s6 = 2.0f;
+                        //Increment the numer of shots - its three per optimisation check in kernel
+                        optimArr[i].s7+=3.0f;
+                        //tgtPos.s5 = 0.0f;
+                    }
+                } else {
+                    //Check if we've exceeded elev threshold
+                    if (optimArr[i].s5 < elevThreshold) {
+                        //Didnt reach dist and have exceeded elev threshold - break at current
+                        //(0.0 - running, 1.0 - success, 2.0 - failed)
+                        optimArr[i].s6 = 2.0f;
+                        //Increment the numer of shots - its three per optimisation check in kernel
+                        optimArr[i].s7+=3.0f;
+                        //TODO: Set run flag in demarr aswell
+                        //tgtPos.s5 = 0.0f;
+                    } else {
+                        //Keep trying
+                        optimArr[i].s5=optimArr[i].s5/2.0f;
+                        //min
+                        optimArr[i].s2=optimArr[i].s0-(optimArr[i].s5/2.0f);
+                        //Check Boundary
+                        if (optimArr[i].s2 < elevMin) {
+                            optimArr[i].s2 = elevMin;
+                        }
+                        //max
+                        optimArr[i].s3=optimArr[i].s0+(optimArr[i].s5/2.0f);
+                        if (optimArr[i].s3 > elevMax) {
+                            optimArr[i].s3 = elevMax;
+                        }
+                        //mid
+                        optimArr[i].s4=optimArr[i].s0;
+                        //Incrememnt shots
+                        optimArr[i].s7+=3.0f;
+                    }
+                }
+            }
+        }
+    }
+    return workLeft;
+}
+
 
 void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
     

@@ -69,7 +69,7 @@ int main(int argc, const char * argv[]) {
     //Change and threshold are the same...
     float minElevChange = 0.01;
     float elevThreshold = 0.01;
-    float distThreshold = 20.0;
+    float distThreshold = 50.0;
     float thetaStep = 0.01;
     float timeStep = 0.05;
     
@@ -134,8 +134,9 @@ int main(int argc, const char * argv[]) {
     try {
         
         // compile opencl source
+        std::cout << "Compiling Kernels..." << std::endl;
         program.build(devices);
-        std::cout << "built program" << std::endl;
+        std::cout << "Done Compiling" << std::endl;
         
     }
     catch (cl::Error &err) {
@@ -185,7 +186,6 @@ int main(int argc, const char * argv[]) {
     //Load DEM into cl_float8:
     //float8(x,y,z,theta,dist,runflag,blos,tlos)
     cl_float8 *h_demSP = new cl_float8[taskSize];
-    cl_float8 *output_demSP = new cl_float8[taskSize];
     Utils::GDAL2FLOAT8(poDataset, h_demSP);
     
     //Load DEMZ's into single Arr
@@ -227,13 +227,6 @@ int main(int argc, const char * argv[]) {
 //    std::cout << "Parrellel Shots per DEM Px: " << thetaArr.size()<< std::endl;
 //    std::cout << "Total shots: " << thetaArr.size()*taskSize<< std::endl;
     
-    //Build Optimisation Data Arr (theta, mindist, elevmin, elevmax, elevmid, spacing, optimflag (0.0 - running, 1.0 - success, 2.0 - failed), SPARE)
-    cl_float8 *h_optimArr = new cl_float8[taskSize];
-    for (int i=0; i<taskSize; i++){
-        cl_float8 out = {0.0f, 99999.0f, minElev, maxElev, minElev+((maxElev-minElev)/2.0f), 10.0f, 0.0f, 0.0f};
-        h_optimArr[i] = out;
-    }
-    
     //clock_t tt = clock();
     //clock_t tt_real = clock();
     
@@ -245,8 +238,8 @@ int main(int argc, const char * argv[]) {
 //        cl::Buffer d_outBuff = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(float), NULL, &err);
 //        cl::Buffer d_thetaArr = cl::Buffer(context, CL_MEM_READ_ONLY, thetaArr.size()*sizeof(float), NULL, &err);
 //        cl::Buffer d_distArr = cl::Buffer(context, CL_MEM_READ_WRITE, thetaArr.size()*sizeof(float), NULL, &err);
-        cl::Buffer d_demZArr = cl::Buffer(context, CL_MEM_READ_ONLY, taskSize*sizeof(float), NULL, &err);
-        cl::Buffer d_optimArr = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float8), NULL, &err);
+//        cl::Buffer d_demZArr = cl::Buffer(context, CL_MEM_READ_ONLY, taskSize*sizeof(float), NULL, &err);
+        //cl::Buffer d_optimArr = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float8), NULL, &err);
         
         //Out data on the host
 //        float *h_output = new float[taskSize];
@@ -258,9 +251,8 @@ int main(int argc, const char * argv[]) {
         //DEM Arr
         queue.enqueueWriteBuffer(d_inBuffDEMFull,CL_TRUE,0,taskSize*sizeof(cl_float8), h_demSP);
         //DEM Z Arr
-        queue.enqueueWriteBuffer(d_demZArr,CL_TRUE,0,taskSize*sizeof(float), h_demZArr);
-        //Optimise Arr
-        queue.enqueueWriteBuffer(d_optimArr,CL_TRUE,0,taskSize*sizeof(cl_float4), h_optimArr);
+//        queue.enqueueWriteBuffer(d_demZArr,CL_TRUE,0,taskSize*sizeof(float), h_demZArr);
+        queue.finish();
         
         
         //WORKS
@@ -279,6 +271,7 @@ int main(int argc, const char * argv[]) {
         cl::Kernel demIntersectFast = cl::Kernel(program, "demIntersectFast", &err);
 //        cl::Kernel optimise = cl::Kernel(program, "optimise", &err);
         cl::Kernel optEasy = cl::Kernel(program, "optEasy", &err);
+        queue.finish();
         
         
         //Dummy target position
@@ -299,14 +292,46 @@ int main(int argc, const char * argv[]) {
         err = queue.enqueueNDRangeKernel(rangeChk, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
         queue.finish();
         
+        //Read the processed DEM data back out to thin data
+        err = queue.enqueueReadBuffer(d_inBuffDEMFull, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_demSP, NULL, NULL);
+        // wait for completion
+        queue.finish();
+
+        //TODO Gtta be a better way of doing this without memory copy
+        int inRngCnt = 0;
+        for (int i=0; i<taskSize; i++){
+            if (h_demSP[i].s5 == 1.0f){
+                inRngCnt++;
+            }
+        }
+        std::cout << "Num Valid Shots after range thin: " << inRngCnt << std::endl;
+        //Swap values
+        cl_float8 *h_demSP_thin = new cl_float8[inRngCnt];
+        int thinI = 0;
+        for (int i=0; i<taskSize; i++){
+            if (h_demSP[i].s5 == 1.0f){
+                h_demSP_thin[thinI]=h_demSP[i];
+                thinI++;
+            }
+            
+        }
+        delete[] h_demSP;
+        //Swap tasksize around to avoid mistakes
+        taskSize = inRngCnt;
+        
+        std::cout << "Copying thinned data back in" << inRngCnt << std::endl;
+        cl::Buffer d_inBuffDEMThin = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float8), NULL, &err);
+        queue.enqueueWriteBuffer(d_inBuffDEMThin,CL_TRUE,0,taskSize*sizeof(cl_float8), h_demSP_thin);
+        queue.finish();
+        
         //Optimisation and reduction
-        double tgtPxX = 0.0;
-        double tgtPxY = 0.0;
-        Utils::coordtoPx2d(tgtPos.x, tgtPos.y, tgtPxX, tgtPxY, adfGeoTransform, rasterXSize, rasterYSize);
-        int p = (int)(tgtPxY*rasterXSize+tgtPxX);
-        tgtPos.z = h_demSP[p].z;
+        //double tgtPxX = 0.0;
+        //double tgtPxY = 0.0;
+        //Utils::coordtoPx2d(tgtPos.x, tgtPos.y, tgtPxX, tgtPxY, adfGeoTransform, rasterXSize, rasterYSize);
+        //int p = (int)(tgtPxY*rasterXSize+tgtPxX);
+        //tgtPos.z = h_demSP[p].z;
         //cl_float4 laPos = {0.0, 0.0, 0.0, 0.0};
-        float minTheta = 0.0;
+        //float minTheta = 0.0;
         
         //Works - DEM Fast
         //std::cout << "Shot Args" << std::endl;
@@ -316,14 +341,14 @@ int main(int argc, const char * argv[]) {
         //queue.finish();
         
 //        //Works - DEM Fast
-        std::cout << "Intersect Args" << std::endl;
-        err = demIntersectFast.setArg(0, d_inBuffDEMFull);
-        err = demIntersectFast.setArg(1, tgtPos);
-        err = demIntersectFast.setArg(2, timeStep);
-        err = demIntersectFast.setArg(3, d_demZArr);
-        err = demIntersectFast.setArg(4, cl_geoTrans);
-        err = demIntersectFast.setArg(5, cl_rasterSize);
-        queue.finish();
+//        std::cout << "Intersect Args" << std::endl;
+//        err = demIntersectFast.setArg(0, d_inBuffDEMThin);
+//        err = demIntersectFast.setArg(1, tgtPos);
+//        err = demIntersectFast.setArg(2, timeStep);
+//        err = demIntersectFast.setArg(3, d_demZArr);
+//        err = demIntersectFast.setArg(4, cl_geoTrans);
+//        err = demIntersectFast.setArg(5, cl_rasterSize);
+//        queue.finish();
         
         
 //        //WORKS - Theta Fast
@@ -358,9 +383,17 @@ int main(int argc, const char * argv[]) {
 //        err = optimise.setArg(2, tgtPos);
 //        queue.finish();
         
-        std::cout << "Enqueue Args - optEasy" << std::endl;
+        std::cout << "Optimisation - build data and queue args" << std::endl;
+        //Build Optimisation Data Arr (theta, mindist, elevmin, elevmax, elevmid, spacing, optimflag (0.0 - running, 1.0 - success, 2.0 - failed), SPARE)
+        cl_float8 *h_optimArr = new cl_float8[taskSize];
+        for (int i=0; i<taskSize; i++){
+            cl_float8 out = {0.0f, 99999.0f, minElev, maxElev, minElev+((maxElev-minElev)/2.0f), 10.0f, 0.0f, 0.0f};
+            h_optimArr[i] = out;
+        }
+        cl::Buffer d_optimArr = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float8), NULL, &err);
+        queue.enqueueWriteBuffer(d_optimArr,CL_TRUE,0,taskSize*sizeof(cl_float8), h_optimArr);
         //Build the static input args - Dist Reduce
-        err = optEasy.setArg(0, d_inBuffDEMFull);
+        err = optEasy.setArg(0, d_inBuffDEMThin);
         err = optEasy.setArg(1, d_optimArr);
         err = optEasy.setArg(2, tgtPos);
         err = optEasy.setArg(3, timeStep);
@@ -370,42 +403,52 @@ int main(int argc, const char * argv[]) {
         err = optEasy.setArg(7, maxElev);
         queue.finish();
         
-//        //Read the processed DEM data back out to get the number of range thinned shots and to loop for theta optim input
-//        err = queue.enqueueReadBuffer(d_inBuffDEMFull, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_demSP, NULL, NULL);
-//        // wait for completion
-//        queue.finish();
-//        
-//        int inRngCnt = 0;
-//        for (int i=0; i<taskSize; i++){
-//            if (h_demSP[i].s5 == 1.0f){
-//                inRngCnt++;
-//            }
-//        }
-//
-//        std::cout << "Num Valid Shots after range thin: " << inRngCnt << std::endl;
-        
         //std::clock_t start;
         double duration;
         
         //start = std::clock();
         
-        //CL - Loop the optimisation brute force - Whole DEM
-        std::cout << "Starting Optimisation" << std::endl;
-        int loops = 5;
+        //Loops counter
+        int i=0;
         
-        //DEM Parrellel Version
-        int runCnt = 0;
-        int skipCnt = 0;
+        //Optimse number left flag - get set inside optimse funct
+        int workLeft = taskSize;
         
-        //Easy Shot Optimisation
-        err = queue.enqueueNDRangeKernel(optEasy, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
-        queue.finish();
-        
-        std::cout << "Done Optimisation, copying data" << std::endl;
-        
-        //Brute force
+        //Optimise reduction
         //for (int i=0; i<loops; i++){
+        while (workLeft > 0) {
+            i++;
+        
+            std::cout << "Starting Optimisation run: " << i << std::endl;
+            //Easy Shot Optimisation
+            err = queue.enqueueNDRangeKernel(optEasy, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+            queue.finish();
             
+            std::cout << "Done Shots, copying data out: " << i << std::endl;
+            
+            err = queue.enqueueReadBuffer(d_optimArr, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_optimArr, NULL, NULL);
+            queue.finish();
+            
+            //for (int i=0; i<taskSize; i++){
+            //    std::cout << h_optimArr[i].s0 << " / " << h_optimArr[i].s1 << std::endl;
+            //}
+            
+            //for (int i = 0; i < taskSize; i++)  {
+            //   std::cout << std::setprecision(10) << "Dist: " << h_optimArr[i].s1 << " / theta: " << h_optimArr[i].s0 << " / runs: " << h_optimArr[i].s7 << std::endl;
+            //}
+                
+            std::cout << "Making optimisation decisions..." << std::endl;
+            //Loops inside
+            workLeft = Utils::optimise(h_optimArr, taskSize, distThreshold, elevThreshold, minElev, maxElev);
+            
+            std::cout << "Write data back in" << std::endl;
+            queue.enqueueWriteBuffer(d_optimArr,CL_TRUE,0,taskSize*sizeof(cl_float8), h_optimArr);
+            
+            std::cout << "Work Done, Work left: " << taskSize-workLeft << " / " << workLeft << std::endl;
+
+            
+            
+        
             //DEM Parallel
             //err = queue.enqueueNDRangeKernel(shotOptDem, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
             //Fire Shot
@@ -446,59 +489,57 @@ int main(int argc, const char * argv[]) {
             //shotOpt(d_thetaArr, d_distArr, tgtPos, h_demSP[i], timeStep);
             //Write the closest into the DEM arr
             //thetaDistReduce(d_thetaArr, d_distArr, d_inBuffDEMFull, i);
-        //}
+        }
         
         
         //Intersect - Now we pivot and parallelize based on the DEM
         //err = queue.enqueueNDRangeKernel(shotOptDem, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
-        std::cout << "Done Theta optimisation, running intersect... " << std::endl;
-        err = queue.enqueueNDRangeKernel(demIntersectFast, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
-        queue.finish();
+        //std::cout << "Done Theta optimisation, running intersect... " << std::endl;
+        //err = queue.enqueueNDRangeKernel(demIntersectFast, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+        //queue.finish();
         
         
         //Read DEM Arr back out
-        err = queue.enqueueReadBuffer(d_inBuffDEMFull, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_demSP, NULL, NULL);
-        err = queue.enqueueReadBuffer(d_optimArr, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_optimArr, NULL, NULL);
+//        err = queue.enqueueReadBuffer(d_inBuffDEMFull, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_demSP, NULL, NULL);
+//        queue.finish();
+        //err = queue.enqueueReadBuffer(d_optimArr, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_optimArr, NULL, NULL);
         // wait for completion
-        queue.finish();
+        //queue.finish();
 //
-//        std::cout << "Complete - checking results" << std::endl;
-//        
-//        //Count the results
-//        int blosIntersectCnt = 0;
-//        int rangeSkip = 0;
-//        int optimSuccess = 0;
-//        int optimFail = 0;
-//        int optimPass = 0;
-//        int totalRuns = 0;
-//        for (int i=0; i<taskSize; i++) {
-//            if (h_demSP[i].s5 == 1.0f) {
-//                if (h_optimArr[i].s5 == 2.0f) {
-//                    optimFail++;
-//                } else if (h_optimArr[i].s5 == 0.0f) {
-//                    optimPass++;
-//                } else {
-//                    optimSuccess++;
-//                    if (h_demSP[i].s6 == 1.0f) {
-//                        blosIntersectCnt++;
-//                    }
-//                    if (h_demSP[i].s5 == 0.0f) {
-//                        rangeSkip++;
-//                    }
-//                    totalRuns+=h_optimArr[i].s7;
-//                    //std::cout << std::setprecision(10) << "Tgt Dist: " << h_demSP[i].s4 << " / theta: " << h_demSP[i].s3 << " / runs: " << h_optimArr[i].s7 << std::endl;
-//                }
-//            }
-//        }
-//        
-//        std::cout << "Total Pixels: " << taskSize << std::endl;
-//        std::cout << "Total optim success: " << optimSuccess << std::endl;
-//        std::cout << "Total optim runs (total shots): " << totalRuns << std::endl;
-//        std::cout << "Total optim fail: " << optimFail << std::endl;
-//        std::cout << "Total optim pass: " << optimPass << std::endl;
-//        std::cout << "Total Range Skip:" << rangeSkip << std::endl;
-//        std::cout << "Total Blos intersect:" << blosIntersectCnt << std::endl;
-//        std::cout << "Total BLoS  Clear:" << taskSize-rangeSkip-blosIntersectCnt << std::endl;
+        
+        //Read Optim array back out
+        err = queue.enqueueReadBuffer(d_optimArr, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_optimArr, NULL, NULL);
+        queue.finish();
+        
+        std::cout << "Complete - checking results" << std::endl;
+        
+        //Count the results
+        int blosIntersectCnt = 0;
+        int rangeSkip = 0;
+        int optimSuccess = 0;
+        int optimFail = 0;
+        int optimPass = 0;
+        float totalRuns = 0.0f;
+        for (int i=0; i<taskSize; i++) {
+            totalRuns+=h_optimArr[i].s7;
+            if (h_optimArr[i].s6 == 2.0) {
+                optimFail++;
+            } else if (h_optimArr[i].s6 == 0.0) {
+                optimPass++;
+            } else {
+                optimSuccess++;
+                std::cout << std::setprecision(10) << "Tgt Dist: " << h_optimArr[i].s1 << " / theta: " << h_optimArr[i].s0 << " / spacing: " << h_optimArr[i].s5 << std::endl;
+            }
+        }
+        
+        std::cout << "Total Pixels: " << taskSize << std::endl;
+        std::cout << "Total optim success: " << optimSuccess << std::endl;
+        std::cout << "Total optim runs (total shots): " << totalRuns << std::endl;
+        std::cout << "Total optim fail: " << optimFail << std::endl;
+        std::cout << "Total optim pass: " << optimPass << std::endl;
+        std::cout << "Total Range Skip:" << rangeSkip << std::endl;
+        std::cout << "Total Blos intersect:" << blosIntersectCnt << std::endl;
+        std::cout << "Total BLoS  Clear:" << taskSize-rangeSkip-blosIntersectCnt << std::endl;
         
         //tt = clock() - tt;
         //tt_real = clock() - tt_real;
@@ -507,7 +548,10 @@ int main(int argc, const char * argv[]) {
         //std::cout << "Real Secs: " << duration << std::endl;
         
         //Cleanup
-//        delete[] h_output;
+        //delete[] h_demSP;
+        //delete[] h_optimArr;
+        //delete[] h_demZArr;
+        //delete[] h_demSP_thin;
         
     }
     catch (cl::Error &err) {

@@ -44,8 +44,9 @@ public:
 //                                                                 const int& rasterSizeY,
 //                                                                 const std::shared_ptr <std::vector<std::vector<double>>>& demData);
 
+    static int optimise (cl_float8 *optimArray, int taskSize, float distThreshold, float elevThreshold, float elevMin, float elevMax);
     
-    static std::vector<float> GDAL2VEC (GDALDataset *poDataset);
+    //static std::vector<float> GDAL2VEC (GDALDataset *poDataset);
     
     static void GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr);
     
