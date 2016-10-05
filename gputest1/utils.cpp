@@ -14,6 +14,7 @@
 #include <cmath>
 #include <iostream>
 #include <fstream>
+#include <recShot.h>
 #include "gdal_priv.h"
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
@@ -154,6 +155,8 @@
 
 int Utils::optimise(cl_float8* optimArr, int taskSize, float distThreshold, float elevThreshold, float elevMin, float elevMax) {
     //Optimise outside the kernel - eeeek
+    //This is the amount the spacing is reduced by each step
+    float spacingDiv = 1.5f;
     int workLeft=0;
     for (int i = 0; i < taskSize; i++)  {
         //std::cout << std::setprecision(10) << "Dist: " << optimArr[i].s1 << " / theta: " << optimArr[i].s0 << " / runs: " << optimArr[i].s7 << std::endl;
@@ -168,7 +171,7 @@ int Utils::optimise(cl_float8* optimArr, int taskSize, float distThreshold, floa
                 if (optimArr[i].s0 == elevMin) {
                     if (optimArr[i].s5 > elevThreshold) {
                         //Keep trying - special case for minElev
-                        optimArr[i].s5=optimArr[i].s5/2.0f;
+                        optimArr[i].s5=optimArr[i].s5/spacingDiv;
                         //min
                         optimArr[i].s2=elevMin;
                         //max
@@ -186,7 +189,7 @@ int Utils::optimise(cl_float8* optimArr, int taskSize, float distThreshold, floa
                 } else if (optimArr[i].s0 == elevMax) {
                     if (optimArr[i].s5 > elevThreshold) {
                         //Keep trying - special case for maxElev
-                        optimArr[i].s5=optimArr[i].s5/2.0f;
+                        optimArr[i].s5=optimArr[i].s5/spacingDiv;
                         //min
                         optimArr[i].s2=elevMax-optimArr[i].s5;
                         //max
@@ -212,8 +215,9 @@ int Utils::optimise(cl_float8* optimArr, int taskSize, float distThreshold, floa
                         //TODO: Set run flag in demarr aswell
                         //tgtPos.s5 = 0.0f;
                     } else {
+                        //(0theta, 1mindist, 2elevmin, 3elevmax, 4elevmid, 5spacing, 6optimflag (0.0 - running, 1.0 - success, 2.0 - failed), 7SPARE)
                         //Keep trying
-                        optimArr[i].s5=optimArr[i].s5/2.0f;
+                        optimArr[i].s5=optimArr[i].s5/spacingDiv;
                         //min
                         optimArr[i].s2=optimArr[i].s0-(optimArr[i].s5/2.0f);
                         //Check Boundary
@@ -242,7 +246,7 @@ void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
     
     /*
      * Read an entire GDAL DEM into float8 vector shared pointer memory!
-     * float8(x,y,z,theta,dist,runflag,pixelX, pixelY)
+     * float8(x,y,z,theta,dist2tgt,closesttrjpt,intersectioncnt,S)
      * Also build the x and y coords
      */
     
@@ -274,13 +278,9 @@ void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
             px2Coord(mapX, mapY, i, row, adfGeoTransform, nXSize, nYSize);
             //initiate dist with high value for reduce and runflag
             //Set no run flag on null data
+            //WARNING - USING s6 as TESTING - currently means optim success
             cl_float8 out;
-            if (scanline[i] == -32767.000000) {
-                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 65.0, 999999.0f, 0.0f, 0.0f, 0.0f};
-            } else {
-                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 65.0, 999999.0f, 1.0f, 0.0f, 0.0f};
-            }
-            
+            out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0, 999999.0f, 0.0f, 0.0f, 0.0f};
             worldZPtr[cnt]=(out);
             cnt++;
         }
@@ -291,6 +291,81 @@ void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
         scanline.clear();
     }
     return;
+}
+
+void Utils::GDAL2FLOAT4 (GDALDataset *poDataset, cl_float4 *worldZPtr) {
+    
+    /*
+     * Read an entire GDAL DEM into float8 vector shared pointer memory!
+     * float8(x,y,z,theta,dist,runflag,pixelX, pixelY)
+     * Also build the x and y coords
+     * INCOMPLETE
+     */
+    
+    
+    GDALRasterBand  *poBand;
+    poBand = poDataset->GetRasterBand( 1 );
+    int   nXSize = poBand->GetXSize();
+    int   nYSize = poBand->GetYSize();
+    double        adfGeoTransform[6];
+    poDataset->GetGeoTransform( adfGeoTransform );
+    //Options around storing shared ptr's for each row inside the top vector, for now going easy...
+    //TODO: Store each row as a shared ptr - this will be resused and flattened
+    std::vector<double> rowVec;
+    //Using vector instead of CPLMalloc so memory is cleared by compiler...
+    typedef std::vector<float> raster_data_t;
+    raster_data_t scanline(nXSize);
+    
+    //TODO: Improve this to accommodate where we dont have enough memory for the whole ptr...
+    
+    //Start looping and reading rows into the smart ptr
+    //NOTE: This ends in a Y, X array...
+    int cnt = 0;
+    for (int row = 0; row < nYSize; row++)  {
+        //Read one column from gdal
+        poBand->RasterIO( GF_Read, 0, row, nXSize, 1, &scanline[0], nXSize, 1, GDT_Float32, 0, 0 );
+        //Dump scan line into smart ptr for this row
+        for ( int i = 0; i < nXSize; i++ ) {
+            double mapX, mapY;
+            px2Coord(mapX, mapY, i, row, adfGeoTransform, nXSize, nYSize);
+            cl_float4 out;
+            out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0};
+            worldZPtr[cnt]=(out);
+            cnt++;
+        }
+        //Copy the row vec into the output array
+        //TODO: Implement shared_ptr here
+        
+        //Empty the rowVec for security
+        scanline.clear();
+    }
+    return;
+}
+
+std::vector<cl_float4> Utils::genTrjSoup(float thetaStep, float minElev, float maxElev, float timeStep, float muzVel,
+                             float mortSigma, float mortMass, float baselineZ) {
+    
+    //Generate trajectories for all shots with given thetaStep
+    //Output is a 1d array
+    int idx = 0;
+    std::vector<cl_float4> trjVec;
+    
+    //Loop through launch angles running and recording trajectories
+    for (float i=minElev; i<maxElev; i+=thetaStep){
+        std::vector<position> outPosVec;
+        auto launchPos = std::make_shared<position>( position {0.0, 0.0, baselineZ});
+        //Low tgt so we let the trj run for low shots
+        //TODO: this can be optimised by seeing the range of Z in DEM
+        auto tgtPos = std::make_shared<position>( position {5000.0,5000.0,baselineZ-1000.0});
+        recShot::launchAir(outPosVec, launchPos, tgtPos, muzVel, i, timeStep, mortSigma, mortMass);
+        //Load to intermediate vector
+        for (auto pos : outPosVec) {
+            float dist = sqrt(pos.x*pos.x+pos.y*pos.y);
+            trjVec.push_back({dist, float(pos.z), i, 0.0});
+            idx++;
+        }
+    }
+    return trjVec;
 }
 
 //void Utils::getzVal (std::shared_ptr<position>& inPos, const double geoTransform[6],
@@ -503,18 +578,56 @@ int Utils::singlefOut(const std::vector<cl_float4>& traj, const char* fName) {
     
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+int Utils::writeRasterOut (GDALDataset *poDataset, const char* outFName, cl_float8* optimDEMOut) {
+    /*
+     * Dump results out to a geotiff
+     * Input: pointer to DEM data - not thinned version
+     * Output: 2 band tiff
+     */
+    
+    const char *pszFormat = "GTiff";
+    GDALDriver *poDriver;
+    poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
+    char *pszSRS_WKT = NULL;
+    GDALRasterBand *poBand;
+    int xSize = poDataset->GetRasterXSize();
+    int ySize = poDataset->GetRasterYSize();
+    int currRow = 0;
+    int currCol = 0;
+    double        adfGeoTransform[6];
+    
+    //Out Gdal dataset
+    GDALDataset *poDstDS;
+    char **papszOptions = NULL;
+    
+    //Create the driver for geotiff - 1 band
+    poDstDS = poDriver->Create( outFName, xSize, ySize, 1, GDT_Float32, papszOptions );
+    //Get the geotrans to the DEM geo trans
+    poDataset->GetGeoTransform( adfGeoTransform );
+    poDstDS->SetGeoTransform( adfGeoTransform );
+    poDstDS->SetProjection( poDataset->GetProjectionRef() );
+    
+    //Outdata array
+    float *abyRaster = new float[ySize*xSize];
+    //unsigned char abyRaster[ySize*xSize];
+    
+    //Output band 1 - BloS
+    poBand = poDstDS->GetRasterBand(1);
+    //NOTE: Looping across the smart ptr does not work - has to be other way round
+    for (int row=0; row < ySize; row++){
+        for (int col=0; col < xSize; col++){
+            //WARNING - USING s6 as TESTING - currently means theta
+            abyRaster[row*xSize+col] = optimDEMOut[row*xSize+col].s3;
+        }
+    }
+    
+    //Dump the data to raster
+    poBand->RasterIO( GF_Write, 0, 0, xSize, ySize, abyRaster, xSize, ySize, GDT_Float32, 0, 0 );
+    
+    /* Once we're done, close properly the dataset */
+    GDALClose( (GDALDatasetH) poDstDS );
+    //Delete data ptr
+    delete[] abyRaster;
+    return 0;
+}
 

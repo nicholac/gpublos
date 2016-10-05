@@ -50,6 +50,11 @@ public:
     
     static void GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr);
     
+    static void GDAL2FLOAT4 (GDALDataset *poDataset, cl_float4 *worldZPtr);
+    
+    static std::vector<cl_float4> genTrjSoup(float thetaStep, float minElev, float maxElev, float timeStep, float muzVel,
+                                 float mortSigma, float mortMass, float baselineZ);
+    
     static std::vector<cl_float4> GDAL2VEC2D (GDALDataset *poDataset);
     
     static void coordtoPx2d(const double& x0, const double& y0, double& pxX, double& pxY,
@@ -64,6 +69,8 @@ public:
     static GDALDataset* openDem(const char* demFName);
     
     static int singlefOut(const std::vector<cl_float4>& traj, const char* fName);
+    
+    static int writeRasterOut (GDALDataset *poDataset, const char* outFName, cl_float8* optimDEMOut);
     
 };
 

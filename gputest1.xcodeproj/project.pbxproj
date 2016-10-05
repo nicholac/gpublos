@@ -7,12 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		85D6EA0A1D805F9F00E18DD8 /* main.cpp.basicworks in Sources */ = {isa = PBXBuildFile; fileRef = 85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */; };
-		9418CC841B2F7A6800168646 /* main.cpp.complex in Sources */ = {isa = PBXBuildFile; fileRef = 9418CC831B2F7A6800168646 /* main.cpp.complex */; };
+		850667F11D943B2800F1215C /* lut.cl in Sources */ = {isa = PBXBuildFile; fileRef = 850667F01D943B2800F1215C /* lut.cl */; };
+		850667F31D943E1E00F1215C /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 850667F21D943E1E00F1215C /* main.cpp */; };
+		850668281D94664000F1215C /* azUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 850668191D94664000F1215C /* azUtils.cpp */; };
+		850668291D94664000F1215C /* motionUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8506681C1D94664000F1215C /* motionUtils.cpp */; };
+		8506682A1D94664000F1215C /* recShot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8506681F1D94664000F1215C /* recShot.cpp */; };
+		8506682B1D94664000F1215C /* velocityUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 850668231D94664000F1215C /* velocityUtils.cpp */; };
+		8506682C1D94664000F1215C /* worldParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 850668251D94664000F1215C /* worldParams.cpp */; };
+		8506682D1D94683600F1215C /* main.cpp.other in Sources */ = {isa = PBXBuildFile; fileRef = 850668181D945F1E00F1215C /* main.cpp.other */; };
+		852C42EE1D913925001B7CCD /* bloskern.cl in Sources */ = {isa = PBXBuildFile; fileRef = 852C42ED1D913925001B7CCD /* bloskern.cl */; };
 		941F54D11B29A027004A9C8E /* utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 941F54CF1B29A027004A9C8E /* utils.cpp */; };
-		94239CB71B8E468E0072FB08 /* blos.cl in Sources */ = {isa = PBXBuildFile; fileRef = 94239CB61B8E468E0072FB08 /* blos.cl */; };
 		94AEA3BD1B14F68900D07C96 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94AEA3BC1B14F68900D07C96 /* OpenCL.framework */; };
-		94DBDA391B2AFCE400F1EE69 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94DBDA381B2AFCE400F1EE69 /* main.cpp */; };
+		94DBDA391B2AFCE400F1EE69 /* main.cpp.pip in Sources */ = {isa = PBXBuildFile; fileRef = 94DBDA381B2AFCE400F1EE69 /* main.cpp.pip */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,42 +34,37 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		850667F01D943B2800F1215C /* lut.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = lut.cl; sourceTree = "<group>"; };
+		850667F21D943E1E00F1215C /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = ../main.cpp; sourceTree = "<group>"; };
+		850668181D945F1E00F1215C /* main.cpp.other */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = main.cpp.other; path = ../main.cpp.other; sourceTree = "<group>"; };
+		850668191D94664000F1215C /* azUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = azUtils.cpp; path = ../../../workspace/blosmp/src/azUtils.cpp; sourceTree = "<group>"; };
+		8506681A1D94664000F1215C /* azUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = azUtils.h; path = ../../../workspace/blosmp/src/azUtils.h; sourceTree = "<group>"; };
+		8506681B1D94664000F1215C /* force.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = force.h; path = ../../../workspace/blosmp/src/force.h; sourceTree = "<group>"; };
+		8506681C1D94664000F1215C /* motionUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = motionUtils.cpp; path = ../../../workspace/blosmp/src/motionUtils.cpp; sourceTree = "<group>"; };
+		8506681D1D94664000F1215C /* motionUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = motionUtils.h; path = ../../../workspace/blosmp/src/motionUtils.h; sourceTree = "<group>"; };
+		8506681E1D94664000F1215C /* position.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = position.h; path = ../../../workspace/blosmp/src/position.h; sourceTree = "<group>"; };
+		8506681F1D94664000F1215C /* recShot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = recShot.cpp; path = ../../../workspace/blosmp/src/recShot.cpp; sourceTree = "<group>"; };
+		850668201D94664000F1215C /* recShot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = recShot.h; path = ../../../workspace/blosmp/src/recShot.h; sourceTree = "<group>"; };
+		850668211D94664000F1215C /* trajectory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = trajectory.h; path = ../../../workspace/blosmp/src/trajectory.h; sourceTree = "<group>"; };
+		850668221D94664000F1215C /* velocity.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = velocity.h; path = ../../../workspace/blosmp/src/velocity.h; sourceTree = "<group>"; };
+		850668231D94664000F1215C /* velocityUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = velocityUtils.cpp; path = ../../../workspace/blosmp/src/velocityUtils.cpp; sourceTree = "<group>"; };
+		850668241D94664000F1215C /* velocityUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = velocityUtils.h; path = ../../../workspace/blosmp/src/velocityUtils.h; sourceTree = "<group>"; };
+		850668251D94664000F1215C /* worldParams.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = worldParams.cpp; path = ../../../workspace/blosmp/src/worldParams.cpp; sourceTree = "<group>"; };
+		850668261D94664000F1215C /* worldParams.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = worldParams.h; path = ../../../workspace/blosmp/src/worldParams.h; sourceTree = "<group>"; };
+		850668271D94664000F1215C /* xyzVect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xyzVect.h; path = ../../../workspace/blosmp/src/xyzVect.h; sourceTree = "<group>"; };
+		852C42ED1D913925001B7CCD /* bloskern.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = bloskern.cl; sourceTree = "<group>"; };
 		85730B8D1D88861C0080A6EF /* build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
-		85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.basicworks; sourceTree = "<group>"; };
-		9418CC831B2F7A6800168646 /* main.cpp.complex */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.complex; sourceTree = "<group>"; };
 		941F54CA1B28C284004A9C8E /* simplekern.cl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = simplekern.cl.h; sourceTree = "<group>"; };
 		941F54CB1B28C2D3004A9C8E /* main.cpp.applehelp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.applehelp; sourceTree = "<group>"; };
-		941F54CD1B29905B004A9C8E /* build_settings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build_settings; sourceTree = "<group>"; };
-		941F54CE1B2992CC004A9C8E /* working_basicint */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = working_basicint; sourceTree = "<group>"; };
 		941F54CF1B29A027004A9C8E /* utils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = utils.cpp; sourceTree = "<group>"; };
 		941F54D01B29A027004A9C8E /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
-		94239CB61B8E468E0072FB08 /* blos.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = blos.cl; sourceTree = "<group>"; };
-		94676F271B29C03400EA5CC6 /* recShot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = recShot.cpp; sourceTree = "<group>"; };
-		94676F281B29C03400EA5CC6 /* recShot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = recShot.h; sourceTree = "<group>"; };
-		94676F2A1B29C06600EA5CC6 /* velocity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = velocity.h; sourceTree = "<group>"; };
-		94676F371B29C20600EA5CC6 /* azUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = azUtils.cpp; sourceTree = "<group>"; };
-		94676F381B29C20600EA5CC6 /* azUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = azUtils.h; sourceTree = "<group>"; };
-		94676F391B29C20600EA5CC6 /* velocityUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = velocityUtils.cpp; sourceTree = "<group>"; };
-		94676F3A1B29C20600EA5CC6 /* velocityUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = velocityUtils.h; sourceTree = "<group>"; };
-		94676F3B1B29C20600EA5CC6 /* worldParams.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = worldParams.cpp; sourceTree = "<group>"; };
-		94676F3C1B29C20600EA5CC6 /* worldParams.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = worldParams.h; sourceTree = "<group>"; };
-		94676F401B29C26400EA5CC6 /* acceleration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = acceleration.h; sourceTree = "<group>"; };
-		94676F411B29C2FC00EA5CC6 /* motionUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = motionUtils.cpp; sourceTree = "<group>"; };
-		94676F421B29C2FC00EA5CC6 /* motionUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = motionUtils.h; sourceTree = "<group>"; };
-		94676F441B29CC4500EA5CC6 /* distUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = distUtils.cpp; sourceTree = "<group>"; };
-		94676F451B29CC4500EA5CC6 /* distUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = distUtils.h; sourceTree = "<group>"; };
-		94676F471B29D74F00EA5CC6 /* main.cpp.fucked */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.fucked; sourceTree = "<group>"; };
 		94AEA3AF1B14EE6800D07C96 /* gputest1 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gputest1; sourceTree = BUILT_PRODUCTS_DIR; };
 		94AEA3B21B14EE6800D07C96 /* main.cpp.full */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.cpp.full; sourceTree = "<group>"; };
 		94AEA3B91B14EF0D00D07C96 /* kernel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kernel.c; sourceTree = "<group>"; };
 		94AEA3BA1B14EF0D00D07C96 /* kernel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kernel.h; sourceTree = "<group>"; };
 		94AEA3BC1B14F68900D07C96 /* OpenCL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenCL.framework; path = System/Library/Frameworks/OpenCL.framework; sourceTree = SDKROOT; };
-		94AEA3BE1B1C35D300D07C96 /* intersect.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = intersect.cpp; sourceTree = "<group>"; };
-		94AEA3BF1B1C35D300D07C96 /* intersect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = intersect.h; sourceTree = "<group>"; };
-		94AEA3C11B1C362700D07C96 /* position.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = position.h; sourceTree = "<group>"; };
-		94AEA3C21B21D45000D07C96 /* simplekern.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = simplekern.cl; sourceTree = "<group>"; };
-		94DBDA381B2AFCE400F1EE69 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		94E445B21B2E1C9A0040918A /* optUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = optUtils.cpp; sourceTree = "<group>"; };
+		94AEA3C21B21D45000D07C96 /* simplekern.cl.bak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = simplekern.cl.bak; sourceTree = "<group>"; };
+		94DBDA381B2AFCE400F1EE69 /* main.cpp.pip */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main.cpp.pip; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,39 +99,34 @@
 		94AEA3B11B14EE6800D07C96 /* gputest1 */ = {
 			isa = PBXGroup;
 			children = (
-				94E445B21B2E1C9A0040918A /* optUtils.cpp */,
-				94676F441B29CC4500EA5CC6 /* distUtils.cpp */,
-				94676F451B29CC4500EA5CC6 /* distUtils.h */,
-				94676F411B29C2FC00EA5CC6 /* motionUtils.cpp */,
-				94676F421B29C2FC00EA5CC6 /* motionUtils.h */,
-				94676F401B29C26400EA5CC6 /* acceleration.h */,
-				94676F371B29C20600EA5CC6 /* azUtils.cpp */,
-				94676F381B29C20600EA5CC6 /* azUtils.h */,
-				94676F391B29C20600EA5CC6 /* velocityUtils.cpp */,
-				94676F3A1B29C20600EA5CC6 /* velocityUtils.h */,
-				94676F3B1B29C20600EA5CC6 /* worldParams.cpp */,
-				94676F3C1B29C20600EA5CC6 /* worldParams.h */,
+				850668191D94664000F1215C /* azUtils.cpp */,
+				8506681A1D94664000F1215C /* azUtils.h */,
+				8506681B1D94664000F1215C /* force.h */,
+				8506681C1D94664000F1215C /* motionUtils.cpp */,
+				8506681D1D94664000F1215C /* motionUtils.h */,
+				8506681E1D94664000F1215C /* position.h */,
+				8506681F1D94664000F1215C /* recShot.cpp */,
+				850668201D94664000F1215C /* recShot.h */,
+				850668211D94664000F1215C /* trajectory.h */,
+				850668221D94664000F1215C /* velocity.h */,
+				850668231D94664000F1215C /* velocityUtils.cpp */,
+				850668241D94664000F1215C /* velocityUtils.h */,
+				850668251D94664000F1215C /* worldParams.cpp */,
+				850668261D94664000F1215C /* worldParams.h */,
+				850668271D94664000F1215C /* xyzVect.h */,
+				850667F21D943E1E00F1215C /* main.cpp */,
+				850668181D945F1E00F1215C /* main.cpp.other */,
+				94DBDA381B2AFCE400F1EE69 /* main.cpp.pip */,
 				94AEA3B21B14EE6800D07C96 /* main.cpp.full */,
+				850667F01D943B2800F1215C /* lut.cl */,
 				94AEA3B91B14EF0D00D07C96 /* kernel.c */,
 				94AEA3BA1B14EF0D00D07C96 /* kernel.h */,
-				94AEA3BE1B1C35D300D07C96 /* intersect.cpp */,
-				94AEA3BF1B1C35D300D07C96 /* intersect.h */,
-				94AEA3C11B1C362700D07C96 /* position.h */,
-				94AEA3C21B21D45000D07C96 /* simplekern.cl */,
-				94239CB61B8E468E0072FB08 /* blos.cl */,
+				94AEA3C21B21D45000D07C96 /* simplekern.cl.bak */,
+				852C42ED1D913925001B7CCD /* bloskern.cl */,
 				941F54CA1B28C284004A9C8E /* simplekern.cl.h */,
 				941F54CB1B28C2D3004A9C8E /* main.cpp.applehelp */,
-				941F54CD1B29905B004A9C8E /* build_settings */,
-				941F54CE1B2992CC004A9C8E /* working_basicint */,
 				941F54CF1B29A027004A9C8E /* utils.cpp */,
 				941F54D01B29A027004A9C8E /* utils.h */,
-				94676F271B29C03400EA5CC6 /* recShot.cpp */,
-				94676F281B29C03400EA5CC6 /* recShot.h */,
-				94676F2A1B29C06600EA5CC6 /* velocity.h */,
-				94676F471B29D74F00EA5CC6 /* main.cpp.fucked */,
-				94DBDA381B2AFCE400F1EE69 /* main.cpp */,
-				9418CC831B2F7A6800168646 /* main.cpp.complex */,
-				85D6EA091D805F9F00E18DD8 /* main.cpp.basicworks */,
 				85730B8D1D88861C0080A6EF /* build.sh */,
 			);
 			path = gputest1;
@@ -192,11 +188,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				94239CB71B8E468E0072FB08 /* blos.cl in Sources */,
+				850667F31D943E1E00F1215C /* main.cpp in Sources */,
 				941F54D11B29A027004A9C8E /* utils.cpp in Sources */,
-				94DBDA391B2AFCE400F1EE69 /* main.cpp in Sources */,
-				85D6EA0A1D805F9F00E18DD8 /* main.cpp.basicworks in Sources */,
-				9418CC841B2F7A6800168646 /* main.cpp.complex in Sources */,
+				8506682C1D94664000F1215C /* worldParams.cpp in Sources */,
+				850668291D94664000F1215C /* motionUtils.cpp in Sources */,
+				8506682D1D94683600F1215C /* main.cpp.other in Sources */,
+				850668281D94664000F1215C /* azUtils.cpp in Sources */,
+				8506682A1D94664000F1215C /* recShot.cpp in Sources */,
+				94DBDA391B2AFCE400F1EE69 /* main.cpp.pip in Sources */,
+				852C42EE1D913925001B7CCD /* bloskern.cl in Sources */,
+				8506682B1D94664000F1215C /* velocityUtils.cpp in Sources */,
+				850667F11D943B2800F1215C /* lut.cl in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
