@@ -281,9 +281,9 @@ void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
             //WARNING - TESTING INTERSECT - WRITING A BAND OF HIGH ELEVS
             cl_float8 out;
             if (mapY>5119000.0 && mapY<5119100.0){
-                out = {(float)(mapX), (float)(mapY), 50000.0, 0.0, 999999.0f, 0.0f, 0.0f, 0.0f};
+                out = {(float)(mapX), (float)(mapY), 50000.0, 0.0, 999999.0f, 999999.0f, 0.0f, 0.0f};
             } else {
-                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0, 999999.0f, 0.0f, 0.0f, 0.0f};
+                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0, 999999.0f, 999999.0f, 0.0f, 0.0f};
             }
             worldZPtr[cnt]=(out);
             cnt++;
