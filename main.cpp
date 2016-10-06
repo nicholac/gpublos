@@ -35,14 +35,17 @@
 int main(int argc, const char * argv[]) {
 
     char* kernelsSrc = "/Users/dusted-dstl/Documents/xcodeworkspace/gpublos/gputest1/lut.cl";
-    char* demFName = "/Users/dusted-dstl/Documents/geodata/mount_chip.tif";
-    //char* demFName = "/Users/dusted-dstl/Documents/geodata/mount.dem";
+    //char* demFName = "/Users/dusted-dstl/Documents/geodata/mount_chip.tif";
+    char* demFName = "/Users/dusted-dstl/Documents/geodata/mount.dem";
     char* outfName = "/Users/dusted-dstl/Documents/geodata/gpu_soup3.tif";
     //Linux
     //char* kernelsSrc = "/home/ec2-user/gputest1/simplekern.cl";
-    float tgtX = 559770;
-    float tgtY = 5119808.0;
-    float tgtZ = 3856.0;
+    //float tgtX = 559770;
+    //float tgtY = 5119808.0;
+    //float tgtZ = 3856.0;
+    float tgtX = 562623.0;
+    float tgtY = 5116239.0;
+    float tgtZ = 6375.0;
     //Dummy target position
     cl_float4 tgtPos = {tgtX, tgtY, tgtZ, 0.0};
     
@@ -51,10 +54,8 @@ int main(int argc, const char * argv[]) {
     float laY = 100.0;
     float laZ = 100.0;
     float dist = sqrt(pow(laX, 2.0)+pow(laY, 2.0));
-    cl_float4 fiPos = {dist, laZ, 45.0, 0.0};
     
     int trjArrSize = 3000;
-    int findIdx = 2500;
     
     float minElev = 45.0;
     float maxElev = 85.0;
@@ -71,6 +72,8 @@ int main(int argc, const char * argv[]) {
     float mortMass = 3.2;
     //Maximum error acceptable between trj and tgt (m)
     float maxErr = 20.0;
+    //Processing chunk size
+    int chunk = 100000;
     
     
     
@@ -217,117 +220,149 @@ int main(int argc, const char * argv[]) {
     std::cout << std::setprecision(10) << "demZArr at position: " <<  h_demZArr[zIdx] << std::endl;
     std::cout << std::setprecision(10) << std::endl;
     
+    //Build kernels
+    std::cout << "Building kernel" << std::endl;
+    cl::Kernel genDists = cl::Kernel(program, "genDists", &err);
+    cl::Kernel trjRange2 = cl::Kernel(program, "trjRange2", &err);
+    cl::Kernel trjIntersect = cl::Kernel(program, "trjIntersect", &err);
     
-    //Build buffers and write to device
-    try {
-        std::cout << "Loading Buffers " << std::endl;
-        cl::Buffer d_trjArr = cl::Buffer(context, CL_MEM_READ_ONLY, trjArrSize*sizeof(cl_float4), NULL, &err);
-        cl::Buffer d_tgtArr = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float8), NULL, &err);
-        cl::Buffer d_demZArr = cl::Buffer(context, CL_MEM_READ_ONLY, taskSize*sizeof(cl_float), NULL, &err);
-        
-        std::cout << "Writing Buffers " << std::endl;
-        //Write Buffers to device
-        queue.enqueueWriteBuffer(d_trjArr,CL_TRUE,0,trjArrSize*sizeof(cl_float4), h_trjArr);
-        queue.enqueueWriteBuffer(d_tgtArr,CL_TRUE,0,taskSize*sizeof(cl_float8), h_tgtArr);
-        queue.enqueueWriteBuffer(d_demZArr,CL_TRUE,0,taskSize*sizeof(cl_float), h_demZArr);
-        queue.finish();
-        std::cout << "Done Writing Buffers " << std::endl;
-        
-        
-        //Run the distance creation kernel
-        std::cout << "Building kernel" << std::endl;
-        cl::Kernel genDists = cl::Kernel(program, "genDists", &err);
-        cl::Kernel trjRange2 = cl::Kernel(program, "trjRange2", &err);
-        cl::Kernel trjIntersect = cl::Kernel(program, "trjIntersect", &err);
-        
-        
-        std::cout << "Enqueue Args - genDists " << std::endl;
-        err = genDists.setArg(0, d_tgtArr);
-        err = genDists.setArg(1, tgtPos);
-        queue.finish();
-        
-
-        std::cout << "Enqueue Args - trjRange " << std::endl;
-        err = trjRange2.setArg(0, d_trjArr);
-        err = trjRange2.setArg(1, d_tgtArr);
-        err = trjRange2.setArg(2, trjArrSize);
-        err = trjRange2.setArg(3, tgtPos);
-        queue.finish();
-        
-        
-        std::cout << "Enqueue Args - trjIntersect " << std::endl;
-        err = trjIntersect.setArg(0, d_trjArr);
-        err = trjIntersect.setArg(1, d_tgtArr);
-        err = trjIntersect.setArg(2, d_demZArr);
-        err = trjIntersect.setArg(3, trjArrSize);
-        err = trjIntersect.setArg(4, cl_geoTrans);
-        err = trjIntersect.setArg(5, cl_rasterSize);
-        err = trjIntersect.setArg(6, tgtPos);
-        err = trjIntersect.setArg(7, maxErr);
-        queue.finish();
-        
-        //Start CL processing
-        clock_t tt = clock();
-        
-        std::cout << "Running " << taskSize << " Targets..." << std::endl;
-        
-        std::cout << "Distance..." << std::endl;
-        //Generate the distances data from each DEM postion --> tgt
-        err = queue.enqueueNDRangeKernel(genDists, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
-        queue.finish();
-        
-        std::cout << "Trj..." << std::endl;
-        //Optimise using trj soup
-        err = queue.enqueueNDRangeKernel(trjRange2, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
-        queue.finish();
-        
-        //Intersect
-        std::cout << "Interescting..." << std::endl;
-        err = queue.enqueueNDRangeKernel(trjIntersect, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
-        queue.finish();
-
-        //Read results
-        err = queue.enqueueReadBuffer(d_tgtArr, CL_TRUE, 0, taskSize*sizeof(cl_float8), h_tgtArr, NULL, NULL);
-        queue.finish();
-        
-        //Check results
-        int intCnt = 0;
-        int outSideErr = 0;
-        for (int i=0; i<taskSize; i++){
-            if (h_tgtArr[i].s6 > 0.0){
-                intCnt++;
-            }
-            if (h_tgtArr[i].s5 > maxErr){
-                outSideErr++;
-            }
+    std::cout << "Loading Buffers " << std::endl;
+    cl::Buffer d_trjArr = cl::Buffer(context, CL_MEM_READ_ONLY, trjArrSize*sizeof(cl_float4), NULL, &err);
+    cl::Buffer d_tgtArr = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float8), NULL, &err);
+    cl::Buffer d_demZArr = cl::Buffer(context, CL_MEM_READ_ONLY, taskSize*sizeof(cl_float), NULL, &err);
+    
+    std::cout << "Writing Buffers " << std::endl;
+    //Write Buffers to device
+    queue.enqueueWriteBuffer(d_trjArr,CL_TRUE,0,trjArrSize*sizeof(cl_float4), h_trjArr);
+    queue.enqueueWriteBuffer(d_tgtArr,CL_TRUE,0,taskSize*sizeof(cl_float8), h_tgtArr);
+    queue.enqueueWriteBuffer(d_demZArr,CL_TRUE,0,taskSize*sizeof(cl_float), h_demZArr);
+    queue.finish();
+    std::cout << "Done Writing Buffers " << std::endl;
+    
+    std::cout << "Enqueue Args - genDists " << std::endl;
+    err = genDists.setArg(0, d_tgtArr);
+    err = genDists.setArg(1, tgtPos);
+    queue.finish();
+    
+    
+    std::cout << "Enqueue Args - trjRange " << std::endl;
+    err = trjRange2.setArg(0, d_trjArr);
+    err = trjRange2.setArg(1, d_tgtArr);
+    err = trjRange2.setArg(2, trjArrSize);
+    err = trjRange2.setArg(3, tgtPos);
+    queue.finish();
+    
+    
+    std::cout << "Enqueue Args - trjIntersect " << std::endl;
+    err = trjIntersect.setArg(0, d_trjArr);
+    err = trjIntersect.setArg(1, d_tgtArr);
+    err = trjIntersect.setArg(2, d_demZArr);
+    err = trjIntersect.setArg(3, trjArrSize);
+    err = trjIntersect.setArg(4, cl_geoTrans);
+    err = trjIntersect.setArg(5, cl_rasterSize);
+    err = trjIntersect.setArg(6, tgtPos);
+    err = trjIntersect.setArg(7, maxErr);
+    queue.finish();
+    
+    //Start CL processing
+    clock_t tt = clock();
+    
+    //Distance can be run on the entire DEM
+    std::cout << "Distance..." << std::endl;
+    //Generate the distances data from each DEM postion --> tgt
+    err = queue.enqueueNDRangeKernel(genDists, cl::NullRange, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+    queue.finish();
+    
+    //Calculate chunking
+    int numWholeChunks = taskSize/chunk;
+    int remainderChunk = taskSize%chunk;
+    std::cout << " num chunks: " << numWholeChunks << std::endl;
+    std::cout << " remainder: " << remainderChunk << std::endl;
+    
+    //Chunk processing loop - remainder is processed at the end
+    int i = 0;
+    int offSet = 0;
+    int chunksProcessed = 0;
+    while (i<(rasterYSize*rasterXSize)) {
+        if (chunksProcessed != numWholeChunks) {
+            taskSize = chunk;
+        } else {
+            taskSize = remainderChunk;
         }
-        std::cout << "Total tgt Intersects: " << intCnt << std::endl;
-        std::cout << "Total outside err: " << outSideErr << std::endl;
-        std::cout << "Total good shots: " << taskSize-intCnt-outSideErr << std::endl;
         
-        //Write to raster
-        std::cout << "Dumping Raster" << std::endl;
-        int chk = Utils::writeRasterOut (poDataset, outfName, h_tgtArr);
-        //Close base DEM
-        GDALClose( (GDALDatasetH) poDataset );
-        std::cout << "Write raster result: " << chk << std::endl;
+        std::cout << "Chunk number: " << chunksProcessed << std::endl;
+        std::cout << "Offset: " << offSet << std::endl;
+        std::cout << "Task Size: " << taskSize << std::endl;
+        std::cout << "Total procd: " << i << std::endl;
         
-        //Cleanup
-        delete[] h_tgtArr;
-        delete[] h_trjArr;
-        
-        tt = clock() - tt;
-        std::cout << "Done CL Proc: " << float(tt)/CLOCKS_PER_SEC << std::endl;
-        
+        try {
+            
+            std::cout << "Running " << taskSize << " Targets..." << std::endl;
+            
+            std::cout << "Trj..." << std::endl;
+            //Optimise using trj soup
+            err = queue.enqueueNDRangeKernel(trjRange2, {static_cast<size_t>(offSet), 0, 0}, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+            queue.finish();
+            
+            //Intersect
+            std::cout << "Interescting..." << std::endl;
+            err = queue.enqueueNDRangeKernel(trjIntersect, {static_cast<size_t>(offSet), 0, 0}, cl::NDRange(taskSize), cl::NullRange, NULL, NULL);
+            queue.finish();
+            
+            std::cout << "Done Chunk" << std::endl;
+         
+            }
+            catch (cl::Error &err) {
+                //Get the build log for the first device
+                std::cerr << "Building failed, " << err.what() << "(" << err.err() << ")"
+                << "\nRetrieving build log\n"
+                << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0])
+                << "\n";
+                return -1;
+        }
+        //Iterate chunk processed number
+        chunksProcessed++;
+        i+=taskSize;
+        offSet+=taskSize;
     }
-    catch (cl::Error &err) {
-        //Get the build log for the first device
-        std::cerr << "Building failed, " << err.what() << "(" << err.err() << ")"
-        << "\nRetrieving build log\n"
-        << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0])
-        << "\n";
-        return -1;
+    std::cout << "Finishing Chunk Queue..." << std::endl;
+    queue.finish();
+    
+    //Read results - whole thing
+    err = queue.enqueueReadBuffer(d_tgtArr, CL_TRUE, 0, (rasterXSize*rasterYSize)*sizeof(cl_float8), h_tgtArr, NULL, NULL);
+    queue.finish();
+    
+    //Check results
+    int intCnt = 0;
+    int outSideErr = 0;
+    for (int i=0; i<(rasterXSize*rasterYSize); i++){
+        if (h_tgtArr[i].s6 > 0.0){
+            intCnt++;
+        }
+        if (h_tgtArr[i].s5 > maxErr){
+            outSideErr++;
+        }
     }
+    std::cout << "Total tgt Intersects: " << intCnt << std::endl;
+    std::cout << "Total outside err: " << outSideErr << std::endl;
+    std::cout << "Total good shots: " << rasterXSize*rasterYSize-intCnt-outSideErr << std::endl;
+    
+    tt = clock() - tt;
+    std::cout << "Done CL Proc: " << float(tt)/CLOCKS_PER_SEC << std::endl;
+
+    
+    //Write to raster
+    std::cout << "Dumping Raster" << std::endl;
+    int chk = Utils::writeRasterOut (poDataset, outfName, h_tgtArr);
+    //Close base DEM
+    GDALClose( (GDALDatasetH) poDataset );
+    std::cout << "Write raster result: " << chk << std::endl;
+    
+    //Cleanup
+    delete[] h_tgtArr;
+    delete[] h_trjArr;
+    delete[] h_demZArr;
+        
 
     std::cout << "Done" << std::endl;
     

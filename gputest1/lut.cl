@@ -8,7 +8,7 @@ __kernel void genDists(__global float8* tgtArr, float4 chkPt)
     int gid = get_global_id (0);
     
     float diffX, diffY, diffZ, chkDist;
-    chkDist = 9999999.0;
+    chkDist = 9999999.0f;
     float8 procPt;
     procPt = tgtArr[gid];
     //Check Range 2d

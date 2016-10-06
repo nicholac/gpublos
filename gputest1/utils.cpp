@@ -280,7 +280,9 @@ void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
             //Set no run flag on null data
             //WARNING - TESTING INTERSECT - WRITING A BAND OF HIGH ELEVS
             cl_float8 out;
-            if (mapY>5119000.0 && mapY<5119100.0){
+            if (mapX>559373.0 && mapX<560476.0 && mapY>5119000.0 && mapY<5119100.0){
+                out = {(float)(mapX), (float)(mapY), 50000.0, 0.0, 999999.0f, 999999.0f, 0.0f, 0.0f};
+            } else if (mapX>559059.0 && mapX<559351.0 && mapY<5120034.0 && mapY>5119892.0) {
                 out = {(float)(mapX), (float)(mapY), 50000.0, 0.0, 999999.0f, 999999.0f, 0.0f, 0.0f};
             } else {
                 out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0, 999999.0f, 999999.0f, 0.0f, 0.0f};
@@ -607,8 +609,8 @@ int Utils::writeRasterOut (GDALDataset *poDataset, const char* outFName, cl_floa
     GDALDataset *poDstDS;
     char **papszOptions = NULL;
     
-    //Create the driver for geotiff - 1 band
-    poDstDS = poDriver->Create( outFName, xSize, ySize, 1, GDT_Float32, papszOptions );
+    //Create the driver for geotiff - 3 band2
+    poDstDS = poDriver->Create( outFName, xSize, ySize, 3, GDT_Float32, papszOptions );
     //Get the geotrans to the DEM geo trans
     poDataset->GetGeoTransform( adfGeoTransform );
     poDstDS->SetGeoTransform( adfGeoTransform );
@@ -616,7 +618,6 @@ int Utils::writeRasterOut (GDALDataset *poDataset, const char* outFName, cl_floa
     
     //Outdata array
     float *abyRaster = new float[ySize*xSize];
-    //unsigned char abyRaster[ySize*xSize];
     
     //Output band 1 - BloS
     poBand = poDstDS->GetRasterBand(1);
@@ -625,6 +626,32 @@ int Utils::writeRasterOut (GDALDataset *poDataset, const char* outFName, cl_floa
         for (int col=0; col < xSize; col++){
             //WARNING - CHECK OUTPUT VALUE
             abyRaster[row*xSize+col] = optimDEMOut[row*xSize+col].s6;
+        }
+    }
+    
+    //Dump the data to raster
+    poBand->RasterIO( GF_Write, 0, 0, xSize, ySize, abyRaster, xSize, ySize, GDT_Float32, 0, 0 );
+    
+    //Output band 2 - Error between tgt and closest trajectory pt
+    poBand = poDstDS->GetRasterBand(2);
+    //NOTE: Looping across the smart ptr does not work - has to be other way round
+    for (int row=0; row < ySize; row++){
+        for (int col=0; col < xSize; col++){
+            //WARNING - CHECK OUTPUT VALUE
+            abyRaster[row*xSize+col] = optimDEMOut[row*xSize+col].s5;
+        }
+    }
+    
+    //Dump the data to raster
+    poBand->RasterIO( GF_Write, 0, 0, xSize, ySize, abyRaster, xSize, ySize, GDT_Float32, 0, 0 );
+    
+    //Output band 3 - launch elevation
+    poBand = poDstDS->GetRasterBand(3);
+    //NOTE: Looping across the smart ptr does not work - has to be other way round
+    for (int row=0; row < ySize; row++){
+        for (int col=0; col < xSize; col++){
+            //WARNING - CHECK OUTPUT VALUE
+            abyRaster[row*xSize+col] = optimDEMOut[row*xSize+col].s3;
         }
     }
     
