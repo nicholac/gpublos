@@ -278,9 +278,13 @@ void Utils::GDAL2FLOAT8 (GDALDataset *poDataset, cl_float8 *worldZPtr) {
             px2Coord(mapX, mapY, i, row, adfGeoTransform, nXSize, nYSize);
             //initiate dist with high value for reduce and runflag
             //Set no run flag on null data
-            //WARNING - USING s6 as TESTING - currently means optim success
+            //WARNING - TESTING INTERSECT - WRITING A BAND OF HIGH ELEVS
             cl_float8 out;
-            out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0, 999999.0f, 0.0f, 0.0f, 0.0f};
+            if (mapY>5119000.0 && mapY<5119100.0){
+                out = {(float)(mapX), (float)(mapY), 50000.0, 0.0, 999999.0f, 0.0f, 0.0f, 0.0f};
+            } else {
+                out = {(float)(mapX), (float)(mapY), (float)(scanline[i]), 0.0, 999999.0f, 0.0f, 0.0f, 0.0f};
+            }
             worldZPtr[cnt]=(out);
             cnt++;
         }
@@ -356,7 +360,7 @@ std::vector<cl_float4> Utils::genTrjSoup(float thetaStep, float minElev, float m
         auto launchPos = std::make_shared<position>( position {0.0, 0.0, baselineZ});
         //Low tgt so we let the trj run for low shots
         //TODO: this can be optimised by seeing the range of Z in DEM
-        auto tgtPos = std::make_shared<position>( position {5000.0,5000.0,baselineZ-1000.0});
+        auto tgtPos = std::make_shared<position>( position {5000.0,5000.0,baselineZ-10000.0});
         recShot::launchAir(outPosVec, launchPos, tgtPos, muzVel, i, timeStep, mortSigma, mortMass);
         //Load to intermediate vector
         for (auto pos : outPosVec) {
@@ -476,11 +480,12 @@ std::vector<cl_float4> Utils::genTrjSoup(float thetaStep, float minElev, float m
 //    return outVec;
 //}
 
-void Utils::coordtoPx2d(const double& x0, const double& y0, double& pxX, double& pxY,
+void Utils::coordtoPx2d(const double& x0, const double& y0, int& pxX, int& pxY,
                               const double geoTransform[6], const double& rasterXSize, const double& rasterYSize) {
     
     /*
      * Convert world coords to DEM pixel coord
+     * This will snap to the coordinate of the top left of the pixel at the given coord
      */
     
     double diffX = 0.0;
@@ -488,8 +493,9 @@ void Utils::coordtoPx2d(const double& x0, const double& y0, double& pxX, double&
     //Get range from origin (top left) and make sure we map to the centre of a pixel
     diffX = x0-geoTransform[0];
     diffY = y0-geoTransform[3];
-    pxX = std::abs(diffX/geoTransform[1]);
-    pxY = std::abs(diffY/geoTransform[5]);
+    //Note forced rounding
+    pxX = static_cast<int>(std::abs(diffX/geoTransform[1]));
+    pxY = static_cast<int>(std::abs(diffY/geoTransform[5]));
 }
 
 void Utils::px2Coord(double& mapX, double& mapY, const double& pxX, const double& pxY,
@@ -497,6 +503,7 @@ void Utils::px2Coord(double& mapX, double& mapY, const double& pxX, const double
     
     /*
      * Convert DEM pixel index into world coords (as projection)
+     * This will give the coordinate at the top left of the given pixel
      */
     
     //Do affine transform for world coords
@@ -504,8 +511,8 @@ void Utils::px2Coord(double& mapX, double& mapY, const double& pxX, const double
     //-0.5*std::abs(adfGeoTransform[5]);
     //mapX = geoTransform[0]+(pxX*geoTransform[1])+pxY*std::abs(geoTransform[2]);
     //mapY = geoTransform[3]+(pxX*geoTransform[4])+pxY*std::abs(geoTransform[5]);
-    mapX = geoTransform[0]+(pxX*geoTransform[1])+pxY*geoTransform[2];
-    mapY = geoTransform[3]+(pxX*geoTransform[4])+pxY*geoTransform[5];
+    mapX = geoTransform[0]+(pxX*geoTransform[1])+(pxY*geoTransform[2]);
+    mapY = geoTransform[3]+(pxX*geoTransform[4])+(pxY*geoTransform[5]);
 }
 
 void Utils::px2CoordCL(cl_float4& map, const int& pxX, const int& pxY,
@@ -616,8 +623,8 @@ int Utils::writeRasterOut (GDALDataset *poDataset, const char* outFName, cl_floa
     //NOTE: Looping across the smart ptr does not work - has to be other way round
     for (int row=0; row < ySize; row++){
         for (int col=0; col < xSize; col++){
-            //WARNING - USING s6 as TESTING - currently means theta
-            abyRaster[row*xSize+col] = optimDEMOut[row*xSize+col].s3;
+            //WARNING - CHECK OUTPUT VALUE
+            abyRaster[row*xSize+col] = optimDEMOut[row*xSize+col].s6;
         }
     }
     

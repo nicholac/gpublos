@@ -57,7 +57,7 @@ public:
     
     static std::vector<cl_float4> GDAL2VEC2D (GDALDataset *poDataset);
     
-    static void coordtoPx2d(const double& x0, const double& y0, double& pxX, double& pxY,
+    static void coordtoPx2d(const double& x0, const double& y0, int& pxX, int& pxY,
                             const double geoTransform[6], const double& rasterXSize, const double& rasterYSize);
     
     static void px2Coord(double& mapX, double& mapY, const double& pxX, const double& pxY,

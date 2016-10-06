@@ -36,7 +36,8 @@ int main(int argc, const char * argv[]) {
 
     char* kernelsSrc = "/Users/dusted-dstl/Documents/xcodeworkspace/gpublos/gputest1/lut.cl";
     char* demFName = "/Users/dusted-dstl/Documents/geodata/mount_chip.tif";
-    char* outfName = "/Users/dusted-dstl/Documents/geodata/gpu_soup1.tif";
+    //char* demFName = "/Users/dusted-dstl/Documents/geodata/mount.dem";
+    char* outfName = "/Users/dusted-dstl/Documents/geodata/gpu_soup3.tif";
     //Linux
     //char* kernelsSrc = "/home/ec2-user/gputest1/simplekern.cl";
     float tgtX = 559770;
@@ -57,9 +58,9 @@ int main(int argc, const char * argv[]) {
     
     float minElev = 45.0;
     float maxElev = 85.0;
-    float thetaStep = 1.0;
+    float thetaStep = 0.05;
     
-    float timeStep = 0.1;
+    float timeStep = 0.05;
     
     float airDens = 1.225;
     float dragCoef = 0.15; //Coef for sphere
@@ -108,9 +109,9 @@ int main(int argc, const char * argv[]) {
     // create platform
     cl::Platform::get(&platforms);
     //CPU Implementation
-    platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &devices);
+    //platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &devices);
     //GPU Implementation
-    //platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
+    platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
     //Query device info for memory size
     std::cout << devices[0].getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
     
@@ -166,13 +167,17 @@ int main(int argc, const char * argv[]) {
     cl_float2 cl_rasterSize = {float(rasterXSize), float(rasterYSize)};
     
     int taskSize = rasterXSize*rasterYSize;
+    std::cout << "Done inData" << std::endl;
 
+    std::cout << "Building trajectories..." << std::endl;
     //Build the trajectory data
     //Compute Air Densities
     worldParams::computeAirDensLUT();
     //tgtZ is a baseline height for computation of air densities
     std::vector<cl_float4> h_trjArrVec = Utils::genTrjSoup(thetaStep, minElev, maxElev,
                                                         timeStep, muzzVel, mortSigma, mortMass, 0.0);
+    std::cout << "Done trajectories" << std::endl;
+    
     //Get size of the trjArr
     trjArrSize = h_trjArrVec.size();
     //Convert to pointer array (not std vec)
@@ -185,12 +190,32 @@ int main(int argc, const char * argv[]) {
     cl_float8 *h_tgtArr = new cl_float8[taskSize];
     Utils::GDAL2FLOAT8 (poDataset, h_tgtArr);
     
-    //Build blank tgtDemDist Arr (dist, z, label, SPARE) - not yet converted to distances (happens on GPU)
-//    cl_float4 *h_tgtDistArr = new cl_float4[taskSize];
-//    for (int i=0; i<taskSize; i++){
-//        //Load Z values
-//        h_tgtDistArr[i].s1 = h_tgtArr[i].s2;
-//    }
+    //Build 1d Dem Z array
+    cl_float *h_demZArr = new cl_float[taskSize];
+    for (int i=0; i<taskSize; i++){
+        h_demZArr[i]=h_tgtArr[i].s2;
+    }
+    
+    //Do some tests on the data
+    double testX = 561010.0;
+    double testY = 5120024.0;
+    double testZ = 4070.0;
+    int pxX, pxY;
+    Utils::coordtoPx2d(testX, testY, pxX, pxY, adfGeoTransform, rasterXSize, rasterYSize);
+    int zIdx = (pxY*rasterXSize)+pxX;
+    double chkX, chkY;
+    Utils::px2Coord(chkX, chkY, pxX, pxY, adfGeoTransform, rasterXSize, rasterYSize);
+    std::cout << std::setprecision(10) << std::endl;
+    std::cout << std::setprecision(10) << "GeoTrans(0-6): " << adfGeoTransform[0] << ", " << adfGeoTransform[1] << ", " << adfGeoTransform[2] << ", " << adfGeoTransform[3] << ", " << adfGeoTransform[4] << ", " << adfGeoTransform[5] << ", " << std::endl;
+    std::cout << std::setprecision(10) << "Rastersize: " << rasterXSize << ", " << rasterYSize << std::endl;
+    std::cout << std::setprecision(10) << "TestCoord X, Y: " << testX<< ", " << testY << std::endl;
+    std::cout << std::setprecision(10) << "Converted Pixel X, Y: " <<  pxX << " " << pxY << std::endl;
+    std::cout << std::setprecision(10) << "Converted 1dIdx: " <<  zIdx << std::endl;
+    std::cout << std::setprecision(10) << "TgtArr X, Y at Position: " <<  chkX << " " << chkY << std::endl;
+    std::cout << std::setprecision(10) << "Test Height: " <<  testZ << std::endl;
+    std::cout << std::setprecision(10) << "TgtArrZ at position: " <<  h_tgtArr[zIdx].s2 << std::endl;
+    std::cout << std::setprecision(10) << "demZArr at position: " <<  h_demZArr[zIdx] << std::endl;
+    std::cout << std::setprecision(10) << std::endl;
     
     
     //Build buffers and write to device
@@ -198,11 +223,13 @@ int main(int argc, const char * argv[]) {
         std::cout << "Loading Buffers " << std::endl;
         cl::Buffer d_trjArr = cl::Buffer(context, CL_MEM_READ_ONLY, trjArrSize*sizeof(cl_float4), NULL, &err);
         cl::Buffer d_tgtArr = cl::Buffer(context, CL_MEM_READ_WRITE, taskSize*sizeof(cl_float8), NULL, &err);
+        cl::Buffer d_demZArr = cl::Buffer(context, CL_MEM_READ_ONLY, taskSize*sizeof(cl_float), NULL, &err);
         
         std::cout << "Writing Buffers " << std::endl;
         //Write Buffers to device
         queue.enqueueWriteBuffer(d_trjArr,CL_TRUE,0,trjArrSize*sizeof(cl_float4), h_trjArr);
         queue.enqueueWriteBuffer(d_tgtArr,CL_TRUE,0,taskSize*sizeof(cl_float8), h_tgtArr);
+        queue.enqueueWriteBuffer(d_demZArr,CL_TRUE,0,taskSize*sizeof(cl_float), h_demZArr);
         queue.finish();
         std::cout << "Done Writing Buffers " << std::endl;
         
@@ -231,11 +258,12 @@ int main(int argc, const char * argv[]) {
         std::cout << "Enqueue Args - trjIntersect " << std::endl;
         err = trjIntersect.setArg(0, d_trjArr);
         err = trjIntersect.setArg(1, d_tgtArr);
-        err = trjIntersect.setArg(2, trjArrSize);
-        err = trjIntersect.setArg(3, cl_geoTrans);
-        err = trjIntersect.setArg(4, cl_rasterSize);
-        err = trjIntersect.setArg(5, tgtPos);
-        err = trjIntersect.setArg(6, maxErr);
+        err = trjIntersect.setArg(2, d_demZArr);
+        err = trjIntersect.setArg(3, trjArrSize);
+        err = trjIntersect.setArg(4, cl_geoTrans);
+        err = trjIntersect.setArg(5, cl_rasterSize);
+        err = trjIntersect.setArg(6, tgtPos);
+        err = trjIntersect.setArg(7, maxErr);
         queue.finish();
         
         //Start CL processing
@@ -304,5 +332,6 @@ int main(int argc, const char * argv[]) {
     std::cout << "Done" << std::endl;
     
     return 0;
+
 }
 

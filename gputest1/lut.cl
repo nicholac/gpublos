@@ -57,7 +57,7 @@ __kernel void trjRange2(__global float4* trjArr, __global float8* demArr,
 }
 
 
-__kernel void trjIntersect(__global float4* trjArr, __global float8* demArr,
+__kernel void trjIntersect(__global float4* trjArr, __global float8* demArr, __global float* demZArr,
                            int trjArrLen, float8 geoTrans,
                            float2 cl_rasterSize, float4 tgtPos, float maxErr)
 {
@@ -69,10 +69,12 @@ __kernel void trjIntersect(__global float4* trjArr, __global float8* demArr,
     //Start point is launch pt
     //GID of tgtArr and demZArr should match...
     int gid = get_global_id (0);
+    float8 launchPt;
+    launchPt = demArr[gid];
     float floatA, floatB, az, intersect;
     intersect = 0.0f;
-    __private float8 launchPt;
-    launchPt = demArr[gid];
+    bool bIntersect;
+    bIntersect = 0.0;
     //Break out if beyond err
     if (launchPt.s5 > maxErr){
         return;
@@ -83,31 +85,76 @@ __kernel void trjIntersect(__global float4* trjArr, __global float8* demArr,
     az = atan2(floatB, floatA);
     for (int i=0; i<trjArrLen; i++){
         //make sure we skip intersecting if below tgt - trj left over from earlier optim
-        if (trjArr[i].s1 < tgtPos.s2){
+        if ((trjArr[i].s1+launchPt.s2) < tgtPos.s2){
             continue;
         }
         //Find matching theta labels
         if (trjArr[i].s2 == launchPt.s3) {
+            float pxX, pxY, floatD, floatC, fIdx;
+            int zIdx;
             //Found one - convert trj pt to UTM at this azimuth
             floatA = launchPt.s0+(trjArr[i].s0 * cos(az)); // X
             floatB = launchPt.s1+(trjArr[i].s0 * sin(az)); // Y
             //Get & check DEM Z at this position - 1D
-            //TODO: Check to ensure we have the right point in tgtDistArr
-            float pxX, pxY;
-            int zIdx;
-            pxX = fabs(floatA-geoTrans.s0)/geoTrans.s1;
-            pxY = fabs(floatB-geoTrans.s3)/geoTrans.s5;
-            zIdx = convert_int((pxY*cl_rasterSize.s0)+pxX);
-            //printf("%f, %f, %f, %f, %f, %f :X, Y, dist, az\n", floatA, floatB, pxX, pxY, zIdx);
+            pxX = convert_int(fabs((floatA-geoTrans.s0)/geoTrans.s1));
+            pxY = convert_int(fabs((floatB-geoTrans.s3)/geoTrans.s5));
+            zIdx = (pxY*convert_int(cl_rasterSize.s0))+pxX;
             //Check intersetion - avoiding an if statement here
-            //Note reuse of demArr and rebasing trjZ to where it was launched from
-            intersect+=convert_float((demArr[zIdx].s2-(trjArr[i].s1+launchPt.s2)) > 0.0f);
+            //Note rebasing trjZ to where it was launched from
+            floatC = convert_float((demZArr[zIdx]-(trjArr[i].s1+launchPt.s2)) > 1.0f);
+            demArr[gid].s6+=floatC;
         }
-        
     }
-    //printf("%f :pt\n", intersect);
-    launchPt.s6=intersect;
-    demArr[gid]=launchPt;
 }
 
-    
+//__kernel void trjIntersect(__global float4* trjArr, __global float8* demArr, __global float* demZArr,
+//                           int trjArrLen, float8 geoTrans,
+//                           float2 cl_rasterSize, float4 tgtPos, float maxErr)
+//{
+//    //INWARD
+//    //Intersection after finding theta using trj mode (above - trjRange2)
+//    //demArr - float8(x,y,z,theta,dist2tgt,closesttrjpt,intersectioncnt,S)
+//    //trj - (dist, z, theta, S)
+//    //maxErr - maximum dist between tgt and trjpt for checking if we have a good solution
+//    //Start point is launch pt
+//    //GID of tgtArr and demZArr should match...
+//    int gid = get_global_id (0);
+//    float8 launchPt;
+//    launchPt = demArr[gid];
+//    float az;
+//    //Break out if beyond err
+//    if (launchPt.s5 > maxErr){
+//        return;
+//    }
+//    //Get the azimuth of this shot
+//    //floatA = tgtPos.s0-launchPt.s0;
+//    //floatB = tgtPos.s1-launchPt.s1;
+//    az = atan2((tgtPos.s0-launchPt.s0), (tgtPos.s1-launchPt.s1));
+//    for (int i=0; i<trjArrLen; i++){
+//        //make sure we skip intersecting if below tgt - trj left over from earlier optim
+//        if ((trjArr[i].s1+launchPt.s2) < tgtPos.s2){
+//            continue;
+//        }
+//        //Find matching theta labels
+//        if (trjArr[i].s2 == launchPt.s3) {
+//            float pxX, pxY, floatA, floatB, floatC;
+//            int zIdx;
+//            //Found one - convert trj pt to UTM at this azimuth
+//            floatA = launchPt.s0+(trjArr[i].s0 * cos(az)); // X
+//            floatB = launchPt.s1+(trjArr[i].s0 * sin(az)); // Y
+//            //Get & check DEM Z at this position - 1D
+//            pxX = convert_int(fabs((floatA-geoTrans.s0)/geoTrans.s1));
+//            pxY = convert_int(fabs((floatB-geoTrans.s3)/geoTrans.s5));
+//            zIdx = (pxY*convert_int(cl_rasterSize.s0))+pxX;
+//            //Check intersetion - avoiding an if statement here
+//            //Note rebasing trjZ to where it was launched from
+//            floatC = convert_float((demZArr[zIdx]-(trjArr[i].s1+launchPt.s2)) > 1.0f);
+//            demArr[gid].s6+=floatC;
+//        }
+//    }
+//}
+
+
+
+
+
